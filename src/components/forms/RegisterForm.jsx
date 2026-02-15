@@ -1,10 +1,30 @@
 import { useState } from 'react'
 
-function RegisterForm({ onNavigate }) {
-  const [role, setRole] = useState('patient')
+function RegisterForm({ onSubmit, onNavigate, isSubmitting }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    passwordConfirm: '',
+    role: 'patient',
+  })
+  const [localError, setLocalError] = useState('')
 
-  const handleSubmit = (event) => {
+  const handleSubmitForm = (event) => {
     event.preventDefault()
+    setLocalError('')
+
+    if (formData.password !== formData.passwordConfirm) {
+      setLocalError('Пароли не совпадают')
+      return
+    }
+
+    onSubmit?.({
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      password: formData.password,
+      role: formData.role.toUpperCase(),
+    })
   }
 
   const handleHomeClick = (event) => {
@@ -19,8 +39,12 @@ function RegisterForm({ onNavigate }) {
     onNavigate('login')
   }
 
+  const handleFieldChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
   return (
-    <form className="card form-card" onSubmit={handleSubmit}>
+    <form className="card form-card" onSubmit={handleSubmitForm}>
       <div className="form-grid">
         <div className="field">
           <label htmlFor="fullName">Имя и фамилия</label>
@@ -28,8 +52,11 @@ function RegisterForm({ onNavigate }) {
             id="fullName"
             name="fullName"
             type="text"
+            value={formData.name}
             placeholder="Например, Тимур Альметов"
+            onChange={(event) => handleFieldChange('name', event.target.value)}
             autoComplete="name"
+            required
           />
         </div>
         <div className="field">
@@ -38,8 +65,10 @@ function RegisterForm({ onNavigate }) {
             id="email"
             name="email"
             type="email"
+            value={formData.email}
             placeholder="name@example.com"
             autoComplete="email"
+            onChange={(event) => handleFieldChange('email', event.target.value)}
             required
           />
         </div>
@@ -48,89 +77,13 @@ function RegisterForm({ onNavigate }) {
           <select
             id="role"
             name="role"
-            value={role}
-            onChange={(event) => setRole(event.target.value)}
+            value={formData.role}
+            onChange={(event) => handleFieldChange('role', event.target.value)}
           >
             <option value="patient">Пациент (гость)</option>
             <option value="doctor">Врач</option>
           </select>
         </div>
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="phone">Телефон</label>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              placeholder="+7 (900) 000-00-00"
-              autoComplete="tel"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="birthDate">Дата рождения</label>
-            <input id="birthDate" name="birthDate" type="date" />
-          </div>
-        </div>
-        {role === 'patient' ? (
-          <div className="field">
-            <label htmlFor="visitPurpose">Цель поездки</label>
-            <select id="visitPurpose" name="visitPurpose" defaultValue="recovery">
-              <option value="recovery">Восстановление и реабилитация</option>
-              <option value="prevention">Профилактика и тонус</option>
-              <option value="relax">Отдых и перезагрузка</option>
-              <option value="consultation">Сопровождение специалистов</option>
-            </select>
-          </div>
-        ) : (
-          <>
-            <div className="field">
-              <label htmlFor="specialization">Специализация</label>
-              <input
-                id="specialization"
-                name="specialization"
-                type="text"
-                placeholder="Например, кардиология"
-                required={role === 'doctor'}
-              />
-            </div>
-            <div className="field-row">
-              <div className="field">
-                <label htmlFor="experience">Стаж работы (лет)</label>
-                <input
-                  id="experience"
-                  name="experience"
-                  type="number"
-                  min="0"
-                  placeholder="Например, 8"
-                  required={role === 'doctor'}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="license">Номер сертификата</label>
-                <input
-                  id="license"
-                  name="license"
-                  type="text"
-                  placeholder="Например, 77-2025-XX"
-                  required={role === 'doctor'}
-                />
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="clinic">Медицинское учреждение</label>
-              <input
-                id="clinic"
-                name="clinic"
-                type="text"
-                placeholder="Название клиники или санатория"
-                required={role === 'doctor'}
-              />
-            </div>
-            <p className="note">
-              Заявка врача будет подтверждена администратором после проверки.
-            </p>
-          </>
-        )}
         <div className="field-row">
           <div className="field">
             <label htmlFor="password">Пароль</label>
@@ -141,6 +94,8 @@ function RegisterForm({ onNavigate }) {
               placeholder="Минимум 8 символов"
               autoComplete="new-password"
               required
+              value={formData.password}
+              onChange={(event) => handleFieldChange('password', event.target.value)}
             />
           </div>
           <div className="field">
@@ -152,32 +107,21 @@ function RegisterForm({ onNavigate }) {
               placeholder="Повторите пароль"
               autoComplete="new-password"
               required
+              value={formData.passwordConfirm}
+              onChange={(event) => handleFieldChange('passwordConfirm', event.target.value)}
             />
           </div>
         </div>
-        <div className="field">
-          <label htmlFor="notes">Особые пожелания</label>
-          <textarea
-            id="notes"
-            name="notes"
-            rows="3"
-            placeholder="Например, рекомендации по диете или ограничения."
-          />
-        </div>
-        <label className="checkbox">
-          <input type="checkbox" name="consent" required />
-          <span>Даю согласие на обработку персональных данных и получение писем.</span>
-        </label>
       </div>
+      {localError ? <p className="note">{localError}</p> : null}
       <div className="form-actions">
-        <button className="btn primary" type="submit">
-          Создать аккаунт
+        <button className="btn primary" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Отправка...' : 'Создать аккаунт'}
         </button>
         <a className="btn ghost" href="./" onClick={handleHomeClick}>
           На главную
         </a>
       </div>
-      <p className="note">Восстановление доступа осуществляется через электронную почту.</p>
       <p className="note">
         Уже есть аккаунт?{' '}
         <a className="text-link" href="?page=login" onClick={handleLoginClick}>
