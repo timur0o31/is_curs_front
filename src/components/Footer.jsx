@@ -13,6 +13,7 @@ function Footer({ page = 'home', onNavigate }) {
     page === 'admin-doctor-requests' ||
     page === 'diary' ||
     page === 'doctor-diary' ||
+    page === 'doctor-sessions' ||
     page === 'patient-services' ||
     page === 'patient-stay-requests'
 
