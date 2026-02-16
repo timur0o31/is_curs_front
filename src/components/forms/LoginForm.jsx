@@ -2,6 +2,13 @@ import { useState } from "react";
 import { login } from "../../api/auth.js";
 import "./LoginForm.css"; // Импортируем стили для ошибок
 
+const ROLE_TO_PAGE = {
+  ADMIN: 'admin',
+  DOCTOR: 'doctor',
+  PATIENT: 'patient',
+  USER: 'patient',
+};
+
 function LoginForm({ onNavigate }) {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +37,8 @@ function LoginForm({ onNavigate }) {
       )
 
       if (onNavigate) {
-        onNavigate(data.role.toLowerCase())
+        const role = String(data.role || '').toUpperCase()
+        onNavigate(ROLE_TO_PAGE[role] || 'home')
       }
     } catch (error) {
       setError(error.message || 'Произошла ошибка при входе');

@@ -5,7 +5,7 @@ function Header({ page = 'home', onNavigate }) {
   const isRegister = page === 'register'
   const isLogin = page === 'login'
   const isDashboard =
-    page === 'user' ||
+    page === 'patient' ||
     page === 'doctor' ||
     page === 'admin' ||
     page === 'admin-stays' ||
@@ -13,13 +13,13 @@ function Header({ page = 'home', onNavigate }) {
     page === 'admin-doctor-requests' ||
     page === 'diary' ||
     page === 'doctor-diary' ||
-    page === 'user-services' ||
-    page === 'user-stay-requests'
+    page === 'patient-services' ||
+    page === 'patient-stay-requests'
 
   const pageLabels = {
     register: 'Регистрация',
     login: 'Вход',
-    user: 'Кабинет пациента',
+    patient: 'Кабинет пациента',
     doctor: 'Кабинет врача',
     admin: 'Панель администратора',
     'admin-stays': 'Проживания',
@@ -27,8 +27,8 @@ function Header({ page = 'home', onNavigate }) {
     'admin-doctor-requests': 'Регистрация врачей',
     diary: 'Дневник пациента',
     'doctor-diary': 'Дневник пациентов',
-    'user-services': 'Сервисы проживания',
-    'user-stay-requests': 'Заявки на проживание',
+    'patient-services': 'Сервисы проживания',
+    'patient-stay-requests': 'Заявки на проживание',
   }
 
   const handleNavigate = (event, target) => {

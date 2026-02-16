@@ -10,16 +10,16 @@ import DoctorDiaryPage from './pages/DoctorDiaryPage'
 import DoctorDashboardPage from './pages/DoctorDashboardPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
+import PatientDashboardPage from './pages/PatientDashboardPage.jsx'
 import PatientDiaryPage from './pages/PatientDiaryPage'
 import RegisterPage from './pages/RegisterPage'
-import UserDashboardPage from './pages/UserDashboardPage'
-import UserStayRequestsPage from './pages/UserStayRequestsPage'
-import UserServicesPage from './pages/UserServicesPage'
+import PatientStayRequestsPage from './pages/PatientStayRequestsPage.jsx'
+import PatientServicesPage from './pages/PatientServicesPage.jsx'
 
 const ALLOWED_PAGES = new Set([
   'register',
   'login',
-  'user',
+  'patient',
   'doctor',
   'admin',
   'admin-stays',
@@ -27,8 +27,8 @@ const ALLOWED_PAGES = new Set([
   'admin-doctor-requests',
   'diary',
   'doctor-diary',
-  'user-services',
-  'user-stay-requests',
+  'patient-services',
+  'patient-stay-requests',
 ])
 
 const getPageFromLocation = () => {
@@ -75,8 +75,8 @@ function App() {
           <RegisterPage onNavigate={navigate} />
         ) : page === 'login' ? (
           <LoginPage onNavigate={navigate} />
-        ) : page === 'user' ? (
-          <UserDashboardPage onNavigate={navigate} />
+        ) : page === 'patient' ? (
+          <PatientDashboardPage onNavigate={navigate} />
         ) : page === 'doctor' ? (
           <DoctorDashboardPage onNavigate={navigate} />
         ) : page === 'admin' ? (
@@ -89,10 +89,10 @@ function App() {
           <AdminDoctorRequestsPage onNavigate={navigate} />
         ) : page === 'diary' ? (
           <PatientDiaryPage onNavigate={navigate} />
-        ) : page === 'user-services' ? (
-          <UserServicesPage onNavigate={navigate} />
-        ) : page === 'user-stay-requests' ? (
-          <UserStayRequestsPage onNavigate={navigate} />
+        ) : page === 'patient-services' ? (
+          <PatientServicesPage onNavigate={navigate} />
+        ) : page === 'patient-stay-requests' ? (
+          <PatientStayRequestsPage onNavigate={navigate} />
         ) : page === 'doctor-diary' ? (
           <DoctorDiaryPage onNavigate={navigate} />
         ) : (

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import SectionHeading from '../components/SectionHeading'
+import DoctorDiary from '../services/DoctorDiary'
 
 const todayAppointments = [
   {
@@ -45,10 +47,87 @@ const requests = [
 ]
 
 function DoctorDashboardPage({ onNavigate }) {
+  const role = String(localStorage.getItem('role') || '').toUpperCase()
+  const accessToken = localStorage.getItem('accessToken')
+  const shouldCheckDoctorStatus = role === 'DOCTOR' && Boolean(accessToken)
+
+  const [isCheckingDoctorStatus, setIsCheckingDoctorStatus] = useState(shouldCheckDoctorStatus)
+  const [isApprovedDoctor, setIsApprovedDoctor] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!shouldCheckDoctorStatus) {
+      setIsCheckingDoctorStatus(false)
+      setIsApprovedDoctor(true)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const loadDoctorStatus = async () => {
+      setIsCheckingDoctorStatus(true)
+
+      try {
+        const response = await DoctorDiary.getDashboard()
+
+        if (cancelled) return
+
+        setIsApprovedDoctor(response?.data === true)
+      } catch {
+        if (cancelled) return
+
+        setIsApprovedDoctor(false)
+      } finally {
+        if (!cancelled) {
+          setIsCheckingDoctorStatus(false)
+        }
+      }
+    }
+
+    loadDoctorStatus()
+
+    return () => {
+      cancelled = true
+    }
+  }, [shouldCheckDoctorStatus])
+
+  const showPendingApproval = shouldCheckDoctorStatus && !isCheckingDoctorStatus && !isApprovedDoctor
+
   const handleDiaryClick = (event) => {
     if (!onNavigate) return
     event.preventDefault()
     onNavigate('doctor-diary')
+  }
+
+  if (isCheckingDoctorStatus) {
+    return (
+      <section className="section dashboard" id="doctor-dashboard">
+        <SectionHeading
+          eyebrow="Кабинет врача"
+          title="Проверяем доступ к кабинету"
+          description="Идет проверка статуса учетной записи врача."
+        />
+      </section>
+    )
+  }
+
+  if (showPendingApproval) {
+    return (
+      <section className="section dashboard" id="doctor-dashboard">
+        <SectionHeading
+          eyebrow="Кабинет врача"
+          title="Дождитесь одобрения администратора"
+          description="Ваша учетная запись врача зарегистрирована, но пока не активирована."
+        />
+        <article className="card">
+          <h3>Что дальше</h3>
+          <p className="muted">
+            После подтверждения администратора откроется доступ к рабочему кабинету врача.
+          </p>
+        </article>
+      </section>
+    )
   }
 
   return (

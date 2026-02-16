@@ -31,9 +31,6 @@ function Doctors({ items = [] }) {
                 </div>
               </div>
               <p className="doctor-focus">{doctor.focus}</p>
-              <div className="doctor-meta">
-                <span className="pill">{doctor.experience}</span>
-              </div>
               <div className="tag-list">
                 {doctor.tags.map((tag) => (
                   <span key={tag} className="tag">

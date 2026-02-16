@@ -5,7 +5,7 @@ function Footer({ page = 'home', onNavigate }) {
   const isRegister = page === 'register'
   const isLogin = page === 'login'
   const isDashboard =
-    page === 'user' ||
+    page === 'patient' ||
     page === 'doctor' ||
     page === 'admin' ||
     page === 'admin-stays' ||
@@ -13,8 +13,8 @@ function Footer({ page = 'home', onNavigate }) {
     page === 'admin-doctor-requests' ||
     page === 'diary' ||
     page === 'doctor-diary' ||
-    page === 'user-services' ||
-    page === 'user-stay-requests'
+    page === 'patient-services' ||
+    page === 'patient-stay-requests'
 
   const handleNavigate = (event, target) => {
     if (!onNavigate) return

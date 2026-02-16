@@ -69,7 +69,7 @@ function PatientDiaryPage({ onNavigate }) {
   const handleBack = (event) => {
     if (!onNavigate) return
     event.preventDefault()
-    onNavigate('user')
+    onNavigate('patient')
   }
 
   return (
@@ -81,7 +81,7 @@ function PatientDiaryPage({ onNavigate }) {
           description="Записи помогают корректировать план лечения и отслеживать динамику."
         />
         <div className="action-row">
-          <a className="btn ghost" href="?page=user" onClick={handleBack}>
+          <a className="btn ghost" href="?page=patient" onClick={handleBack}>
             В кабинет
           </a>
         </div>

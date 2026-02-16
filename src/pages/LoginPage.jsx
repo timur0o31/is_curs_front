@@ -47,8 +47,8 @@ function LoginPage({ onNavigate }) {
             <div className="action-row">
               <a
                 className="btn ghost small"
-                href="?page=user"
-                onClick={(event) => handleRoleClick(event, 'user')}
+                href="?page=patient"
+                onClick={(event) => handleRoleClick(event, 'patient')}
               >
                 Пациент
               </a>

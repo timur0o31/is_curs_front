@@ -30,22 +30,6 @@ function Contacts() {
             </div>
           </div>
         </article>
-        <article className="card contact-card accent reveal" style={{ '--delay': '0.1s' }}>
-          <h3>Подобрать программу</h3>
-          <p>
-            Оставьте заявку, и команда подберет врачей и расписание процедур под
-            ваши цели.
-          </p>
-          <div className="contact-actions">
-            <button className="btn primary" type="button">
-              Связаться с менеджером
-            </button>
-            <button className="btn ghost" type="button">
-              Скачать буклет
-            </button>
-          </div>
-          <p className="note">Ответим в течение рабочего дня.</p>
-        </article>
       </div>
     </section>
   )

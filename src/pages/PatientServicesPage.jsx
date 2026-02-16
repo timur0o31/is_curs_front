@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import SectionHeading from '../components/SectionHeading'
+import PatientStay from '../services/PatientStay'
 
 const takenLockers = new Set([2, 5, 9, 12, 17, 21, 23])
 const lockerSlots = Array.from({ length: 24 }, (_, index) => index + 1)
@@ -12,22 +13,86 @@ const seatTables = [
 
 const takenSeats = new Set(['A1', 'A2', 'B5', 'C3', 'C6'])
 
-function UserServicesPage({ onNavigate }) {
+const parseRoomNumber = (payload) => {
+  if (payload == null) return null
+
+  if (typeof payload === 'number') {
+    return String(payload)
+  }
+
+  if (typeof payload === 'string') {
+    const match = payload.match(/\d+/)
+    return match ? match[0] : null
+  }
+
+  if (typeof payload === 'object') {
+    if (payload.roomNumber != null) return String(payload.roomNumber)
+    if (payload.number != null) return String(payload.number)
+    if (payload.room != null && typeof payload.room === 'object' && payload.room.roomNumber != null) {
+      return String(payload.room.roomNumber)
+    }
+  }
+
+  return null
+}
+
+function PatientServicesPage({ onNavigate }) {
   const [selectedLocker, setSelectedLocker] = useState(18)
   const [selectedSeat, setSelectedSeat] = useState('B4')
+  const [roomNumber, setRoomNumber] = useState(null)
+  const [isRoomLoading, setIsRoomLoading] = useState(false)
 
   const handleBack = (event) => {
     if (!onNavigate) return
     event.preventDefault()
-    onNavigate('user')
+    onNavigate('patient')
   }
 
   const seatTable = selectedSeat?.charAt(0)
   const seatNumber = selectedSeat?.slice(1)
   const seatLabel = selectedSeat ? `Стол ${seatTable}, место ${seatNumber}` : 'Место не выбрано'
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadRoom = async () => {
+      if (!localStorage.getItem('accessToken')) {
+        if (!cancelled) setRoomNumber(null)
+        return
+      }
+
+      setIsRoomLoading(true)
+
+      try {
+        const response = await PatientStay.getMyRoom()
+        if (cancelled) return
+        setRoomNumber(parseRoomNumber(response.data))
+      } catch {
+        if (!cancelled) {
+          setRoomNumber(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setIsRoomLoading(false)
+        }
+      }
+    }
+
+    loadRoom()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const roomLabel = useMemo(() => {
+    if (isRoomLoading) return '...'
+    if (!roomNumber) return 'не назначена'
+    return roomNumber
+  }, [isRoomLoading, roomNumber])
+
   return (
-    <section className="section dashboard" id="user-services">
+    <section className="section dashboard" id="patient-services">
       <div className="diary-header">
         <SectionHeading
           eyebrow="Сервисы проживания"
@@ -35,7 +100,7 @@ function UserServicesPage({ onNavigate }) {
           description="Выберите свободные слоты и закрепите доступы для комфортного отдыха."
         />
         <div className="action-row">
-          <a className="btn ghost" href="?page=user" onClick={handleBack}>
+          <a className="btn ghost" href="?page=patient" onClick={handleBack}>
             В кабинет
           </a>
         </div>
@@ -43,7 +108,7 @@ function UserServicesPage({ onNavigate }) {
       <div className="dashboard-grid dashboard-grid--two">
         <article className="card">
           <h3>Цифровые ключи и шкафчики</h3>
-          <p className="muted">Комната 214 · Выбран шкафчик {selectedLocker}</p>
+          <p className="muted">Комната {roomLabel} · Выбран шкафчик {selectedLocker}</p>
           <div className="locker-grid">
             {lockerSlots.map((locker) => {
               const isTaken = takenLockers.has(locker)
@@ -153,4 +218,4 @@ function UserServicesPage({ onNavigate }) {
   )
 }
 
-export default UserServicesPage
+export default PatientServicesPage

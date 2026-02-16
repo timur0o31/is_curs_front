@@ -1,6 +1,65 @@
-function StayRequestForm() {
-  const handleSubmit = (event) => {
+import { useState } from 'react'
+
+const getTodayIsoDate = () => new Date().toISOString().split('T')[0]
+
+const getDaysBetween = (startDate, endDate) => {
+  if (!startDate || !endDate) return 0
+
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
+
+  const diffMs = end.getTime() - start.getTime()
+  if (diffMs <= 0) return 0
+
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
+
+const formatDays = (value) => {
+  if (value <= 0) return ''
+  if (value % 10 === 1 && value % 100 !== 11) return `${value} день`
+  if ([2, 3, 4].includes(value % 10) && ![12, 13, 14].includes(value % 100)) return `${value} дня`
+  return `${value} дней`
+}
+
+function StayRequestForm({ onSubmit, isSubmitting = false }) {
+  const [localError, setLocalError] = useState('')
+  const [checkInValue, setCheckInValue] = useState('')
+  const [checkOutValue, setCheckOutValue] = useState('')
+
+  const todayIsoDate = getTodayIsoDate()
+  const stayDays = getDaysBetween(checkInValue, checkOutValue)
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
+
+    setLocalError('')
+
+    const form = event.currentTarget
+    const formData = new FormData(form)
+
+    const payload = {
+      checkIn: String(formData.get('checkIn') || ''),
+      checkOut: String(formData.get('checkOut') || ''),
+    }
+
+    if (!payload.checkIn || !payload.checkOut) {
+      setLocalError('Укажите даты заезда и выезда')
+      return
+    }
+
+    if (payload.checkOut <= payload.checkIn) {
+      setLocalError('Дата выезда должна быть позже даты заезда')
+      return
+    }
+
+    const isSuccess = await onSubmit?.(payload)
+    if (isSuccess) {
+      form.reset()
+      setCheckInValue('')
+      setCheckOutValue('')
+    }
   }
 
   return (
@@ -10,66 +69,37 @@ function StayRequestForm() {
         <div className="field-row">
           <div className="field">
             <label htmlFor="stayCheckIn">Дата заезда</label>
-            <input id="stayCheckIn" name="checkIn" type="date" required />
+            <input
+              id="stayCheckIn"
+              name="checkIn"
+              type="date"
+              required
+              disabled={isSubmitting}
+              min={todayIsoDate}
+              value={checkInValue}
+              onChange={(event) => setCheckInValue(event.target.value)}
+            />
           </div>
           <div className="field">
             <label htmlFor="stayCheckOut">Дата выезда</label>
-            <input id="stayCheckOut" name="checkOut" type="date" required />
+            <input
+              id="stayCheckOut"
+              name="checkOut"
+              type="date"
+              required
+              disabled={isSubmitting}
+              min={checkInValue || todayIsoDate}
+              value={checkOutValue}
+              onChange={(event) => setCheckOutValue(event.target.value)}
+            />
           </div>
         </div>
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="stayRoomType">Тип номера</label>
-            <select id="stayRoomType" name="roomType" defaultValue="comfort">
-              <option value="standard">Стандарт</option>
-              <option value="comfort">Комфорт</option>
-              <option value="suite">Люкс</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="stayGuests">Количество гостей</label>
-            <input id="stayGuests" name="guests" type="number" min="1" max="4" defaultValue="1" />
-          </div>
-        </div>
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="stayBuilding">Предпочтительный корпус</label>
-            <select id="stayBuilding" name="building" defaultValue="A">
-              <option value="A">Корпус A (тихий)</option>
-              <option value="B">Корпус B (рядом с процедурами)</option>
-              <option value="C">Корпус C (вид на парк)</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="stayMeal">Питание</label>
-            <select id="stayMeal" name="mealPlan" defaultValue="diet5">
-              <option value="diet5">Диета №5</option>
-              <option value="standard">Без ограничений</option>
-              <option value="vegetarian">Вегетарианское</option>
-              <option value="sugar-free">Без сахара</option>
-            </select>
-          </div>
-        </div>
-        <div className="field">
-          <label htmlFor="stayComment">Комментарий к заявке</label>
-          <textarea
-            id="stayComment"
-            name="comment"
-            rows="3"
-            placeholder="Например, пожелания к номеру или ограничения."
-          />
-        </div>
-        <label className="checkbox">
-          <input type="checkbox" name="transfer" />
-          <span>Нужен трансфер или помощь с багажом</span>
-        </label>
+        {stayDays > 0 ? <p className="note">Срок проживания: {formatDays(stayDays)}</p> : null}
       </div>
+      {localError ? <p className="note">{localError}</p> : null}
       <div className="form-actions">
-        <button className="btn primary" type="submit">
-          Отправить заявку
-        </button>
-        <button className="btn ghost" type="button">
-          Сохранить черновик
+        <button className="btn primary" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
         </button>
       </div>
       <p className="note">Заявка появится в списке после отправки.</p>
