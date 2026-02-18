@@ -1,72 +1,25 @@
 import { useEffect, useState } from 'react'
 import SectionHeading from '../components/SectionHeading'
 import DoctorDiary from '../services/DoctorDiary'
+import {
+  formatRuDate,
+  getTodayIsoDate,
+  normalizeDateValue,
+  normalizeTimeValue,
+} from '../utils/dateTime'
 
-const toIsoDate = (date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-const getTodayIsoDate = () => toIsoDate(new Date())
-
-const getCurrentTimeValue = () => {
-  const date = new Date()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
-const normalizeDateValue = (value) => {
-  if (!value) return ''
-
-  if (typeof value === 'string') {
-    const directDate = value.slice(0, 10)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) return directDate
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-
-  return toIsoDate(date)
-}
-
-const normalizeTimeValue = (value) => {
-  if (!value) return ''
-
-  if (typeof value === 'string') {
-    const match = value.match(/^(\d{2}:\d{2})/)
-    if (match) return match[1]
-  }
-
-  return ''
-}
-
-const formatDayLabel = (value) => {
-  if (!value) return '—'
-
-  const date = new Date(`${value}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return '—'
-
-  return date.toLocaleDateString('ru-RU', {
+const formatDayLabel = (value) =>
+  formatRuDate(value, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
   })
-}
 
-const formatDateLabel = (value) => {
-  if (!value) return '—'
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-
-  return date.toLocaleDateString('ru-RU', {
+const formatDateLabel = (value) =>
+  formatRuDate(value, {
     day: '2-digit',
     month: '2-digit',
   })
-}
 
 const mapActivePatients = (items) =>
   items
@@ -141,7 +94,6 @@ function DoctorDashboardPage({ onNavigate }) {
   const [todaySessionsError, setTodaySessionsError] = useState('')
 
   const todayIsoDate = getTodayIsoDate()
-  const currentTimeValue = getCurrentTimeValue()
 
   useEffect(() => {
     let cancelled = false
@@ -222,7 +174,6 @@ function DoctorDashboardPage({ onNavigate }) {
 
   useEffect(() => {
     let cancelled = false
-
     const loadTodaySessions = async () => {
       if (!shouldCheckDoctorStatus || isCheckingDoctorStatus || !isApprovedDoctor) {
         if (!cancelled) {
@@ -255,9 +206,7 @@ function DoctorDashboardPage({ onNavigate }) {
         }
       }
     }
-
     loadTodaySessions()
-
     return () => {
       cancelled = true
     }
@@ -328,9 +277,6 @@ function DoctorDashboardPage({ onNavigate }) {
                     </strong>
                     <p>{formatDayLabel(item.sessionDate)}</p>
                   </div>
-                  <span className={`status${item.timeStart < currentTimeValue ? ' status--warn' : ''}`}>
-                    {item.timeStart < currentTimeValue ? 'Завершено' : 'Сегодня'}
-                  </span>
                 </li>
               ))}
             </ul>

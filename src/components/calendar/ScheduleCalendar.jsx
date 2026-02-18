@@ -1,13 +1,7 @@
 import { useMemo, useState } from 'react'
+import { formatRuDate, isIsoDate, toIsoDate } from '../../utils/dateTime'
 
 const DAYS_OF_WEEK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-
-const toIsoDate = (date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 const formatMonthLabel = (date) =>
   date.toLocaleDateString('ru-RU', {
@@ -15,19 +9,24 @@ const formatMonthLabel = (date) =>
     year: 'numeric',
   })
 
-const defaultFormatDayLabel = (value) => {
-  if (!value) return '—'
-
-  const date = new Date(`${value}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return '—'
-
-  return date.toLocaleDateString('ru-RU', {
+const defaultFormatDayLabel = (value) =>
+  formatRuDate(value, {
     day: '2-digit',
     month: 'long',
   })
-}
 
-const isIsoDate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+const isDateInRange = ({ dateIso, startDate, endDate }) => {
+  if (!isIsoDate(dateIso)) return false
+
+  const hasStart = isIsoDate(startDate)
+  const hasEnd = isIsoDate(endDate)
+
+  if (!hasStart && !hasEnd) return false
+  if (hasStart && hasEnd) return dateIso >= startDate && dateIso <= endDate
+  if (hasStart) return dateIso === startDate
+
+  return dateIso === endDate
+}
 
 function ScheduleCalendar({
   sessions = [],
@@ -40,6 +39,9 @@ function ScheduleCalendar({
   statusLabel = 'Запланировано',
   formatDayLabel = defaultFormatDayLabel,
   getSessionMeta,
+  withCard = true,
+  highlightStartDate = '',
+  highlightEndDate = '',
 }) {
   const [calendarMonth, setCalendarMonth] = useState(() => {
     if (isIsoDate(requestedDate)) {
@@ -103,6 +105,11 @@ function ScheduleCalendar({
         dateIso,
         isPast: todayIsoDate ? dateIso < todayIsoDate : false,
         sessionsCount: daySessions.length,
+        isInHighlightedRange: isDateInRange({
+          dateIso,
+          startDate: highlightStartDate,
+          endDate: highlightEndDate,
+        }),
       })
     }
 
@@ -111,7 +118,7 @@ function ScheduleCalendar({
     }
 
     return cells
-  }, [calendarMonth, monthSessionMap, todayIsoDate])
+  }, [calendarMonth, highlightEndDate, highlightStartDate, monthSessionMap, todayIsoDate])
 
   const selectedDateSessions = useMemo(() => {
     const availableDates = [...monthSessionMap.keys()].sort()
@@ -132,7 +139,7 @@ function ScheduleCalendar({
   }
 
   return (
-    <article className="card schedule-calendar-card">
+    <article className={withCard ? 'card schedule-calendar-card' : 'schedule-calendar-embedded'}>
       <div className="schedule-calendar-header">
         <div>
           <h3>{title}</h3>
@@ -164,6 +171,9 @@ function ScheduleCalendar({
             'schedule-calendar-day',
             cell.isPast ? 'schedule-calendar-day--past' : '',
             cell.sessionsCount > 0 ? 'schedule-calendar-day--filled' : '',
+            cell.isInHighlightedRange ? 'schedule-calendar-day--range' : '',
+            cell.dateIso === highlightStartDate ? 'schedule-calendar-day--range-start' : '',
+            cell.dateIso === highlightEndDate ? 'schedule-calendar-day--range-end' : '',
             isSelected ? 'schedule-calendar-day--selected' : '',
           ]
             .filter(Boolean)

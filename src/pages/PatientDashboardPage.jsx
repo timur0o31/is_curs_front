@@ -1,22 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import SectionHeading from '../components/SectionHeading'
 import PatientStay from '../services/PatientStay'
-
-const getTodayStart = () => {
-  const date = new Date()
-  date.setHours(0, 0, 0, 0)
-  return date
-}
-
-const isOnOrAfterToday = (value) => {
-  if (!value) return true
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return false
-
-  date.setHours(0, 0, 0, 0)
-  return date.getTime() >= getTodayStart().getTime()
-}
+import PatientSessions from '../services/PatientSessions'
+import { formatRuDate, getTodayIsoDate, getTodayStart, isOnOrAfterToday, parseDateValue } from '../utils/dateTime'
+import { formatSessionTimeLabel, mapSessions } from './doctorSessions/utils'
 
 const formatDays = (value) => {
   if (value <= 0) return '0 дней'
@@ -25,23 +12,17 @@ const formatDays = (value) => {
   return `${value} дней`
 }
 
-const formatDateLabel = (value) => {
-  if (!value) return '—'
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-
-  return date.toLocaleDateString('ru-RU', {
+const formatDateLabel = (value) =>
+  formatRuDate(value, {
     day: 'numeric',
     month: 'long',
   })
-}
 
 const getRemainingDays = (dischargeDate) => {
   if (!dischargeDate) return '—'
 
-  const end = new Date(dischargeDate)
-  if (Number.isNaN(end.getTime())) return '—'
+  const end = parseDateValue(dischargeDate)
+  if (!end) return '—'
 
   end.setHours(0, 0, 0, 0)
   const diffMs = end.getTime() - getTodayStart().getTime()
@@ -69,52 +50,8 @@ const parseRoomNumber = (payload) => {
       return String(payload.room.roomNumber)
     }
   }
-
   return null
 }
-
-const todaySchedule = [
-  {
-    time: '09:00',
-    title: 'Водолечение',
-    location: 'Корпус А, кабинет 3',
-    status: 'Подтверждено',
-  },
-  {
-    time: '11:30',
-    title: 'ЛФК с инструктором',
-    location: 'Зал реабилитации 2',
-    status: 'Подтверждено',
-  },
-  {
-    time: '16:00',
-    title: 'Соляная комната',
-    location: 'Корпус B, кабинет 7',
-    status: 'Ожидает',
-  },
-]
-
-const notifications = [
-  {
-    title: 'Принять лекарство',
-    details: 'Напоминание на 14:30, назначение врача.',
-  },
-  {
-    title: 'Мероприятие в 19:30',
-    details: 'Музыкальный вечер в зимнем саду.',
-  },
-]
-
-const nextEvents = [
-  {
-    title: 'Йога у озера',
-    details: 'Суббота, 11:00',
-  },
-  {
-    title: 'Лекторий о сне',
-    details: 'Вторник, 17:00',
-  },
-]
 
 const currentLocker = 18
 const currentSeat = 'B4'
@@ -124,6 +61,11 @@ function PatientDashboardPage({ onNavigate }) {
   const [isStayLoading, setIsStayLoading] = useState(false)
   const [roomNumber, setRoomNumber] = useState(null)
   const [isRoomLoading, setIsRoomLoading] = useState(false)
+  const [todaySessions, setTodaySessions] = useState([])
+  const [isTodaySessionsLoading, setIsTodaySessionsLoading] = useState(false)
+  const [todaySessionsError, setTodaySessionsError] = useState('')
+
+  const todayIsoDate = getTodayIsoDate()
 
   const seatTable = currentSeat?.charAt(0)
   const seatNumber = currentSeat?.slice(1)
@@ -153,6 +95,59 @@ function PatientDashboardPage({ onNavigate }) {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadTodaySessions = async () => {
+      if (!localStorage.getItem('accessToken')) {
+        if (!cancelled) {
+          setTodaySessions([])
+          setTodaySessionsError('')
+          setIsTodaySessionsLoading(false)
+        }
+        return
+      }
+
+      setIsTodaySessionsLoading(true)
+      setTodaySessionsError('')
+
+      try {
+        const response = await PatientSessions.getMySchedule({ date: todayIsoDate })
+        const items = Array.isArray(response?.data) ? response.data : []
+
+        if (cancelled) return
+
+        const mapped = mapSessions(items).filter((item) => item.sessionDate === todayIsoDate)
+        setTodaySessions(mapped)
+      } catch (error) {
+        if (cancelled) return
+
+        setTodaySessions([])
+
+        const status = error?.response?.status
+        if (status === 401) {
+          setTodaySessionsError('Сессия авторизации истекла. Войдите снова.')
+        } else if (status === 403) {
+          setTodaySessionsError('Недостаточно прав для просмотра расписания.')
+        } else if (status === 404) {
+          setTodaySessionsError('Метод расписания не найден на сервере.')
+        } else {
+          setTodaySessionsError('Не удалось загрузить расписание на сегодня.')
+        }
+      } finally {
+        if (!cancelled) {
+          setIsTodaySessionsLoading(false)
+        }
+      }
+    }
+
+    loadTodaySessions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [todayIsoDate])
 
   useEffect(() => {
     let cancelled = false
@@ -258,6 +253,12 @@ function PatientDashboardPage({ onNavigate }) {
     onNavigate('patient-services')
   }
 
+  const handleSessionsClick = (event) => {
+    if (!onNavigate) return
+    event.preventDefault()
+    onNavigate('patient-sessions')
+  }
+
   return (
     <section className="section dashboard" id="patient-dashboard">
       <SectionHeading
@@ -267,47 +268,33 @@ function PatientDashboardPage({ onNavigate }) {
       />
       <div className="dashboard-grid dashboard-grid--three">
         <article className="card">
-          <h3>Расписание на сегодня</h3>
-          <ul className="list">
-            {todaySchedule.map((item) => (
-              <li className="list-item" key={`${item.time}-${item.title}`}>
-                <div>
-                  <strong>
-                    {item.time} · {item.title}
-                  </strong>
-                  <p>{item.location}</p>
-                </div>
-                <span className="status">{item.status}</span>
-              </li>
-            ))}
-          </ul>
-        </article>
-        <article className="card">
-          <h3>Питание и диета</h3>
-          <p className="muted">{seatLabel}</p>
-          <ul className="list">
-            <li className="list-item">
-              <div>
-                <strong>Завтрак</strong>
-                <p>08:00–09:00, {seatLabel}</p>
-              </div>
-              <span className="list-meta">Диета №5</span>
-            </li>
-            <li className="list-item">
-              <div>
-                <strong>Обед</strong>
-                <p>13:00–14:00, {seatLabel}</p>
-              </div>
-              <span className="list-meta">Диета №5</span>
-            </li>
-            <li className="list-item">
-              <div>
-                <strong>Ужин</strong>
-                <p>18:30–19:30, {seatLabel}</p>
-              </div>
-              <span className="list-meta">Диета №5</span>
-            </li>
-          </ul>
+          <h2>Расписание и запись</h2>
+          <h3>Сегодня</h3>
+          {isTodaySessionsLoading ? (
+            <p className="muted">Загружаем приемы...</p>
+          ) : todaySessionsError ? (
+            <p className="muted">{todaySessionsError}</p>
+          ) : todaySessions.length === 0 ? (
+            <p className="muted">На сегодня процедур нет.</p>
+          ) : (
+            <ul className="list">
+              {todaySessions.map((item) => (
+                <li className="list-item" key={`patient-dashboard-today-session-${item.id}`}>
+                  <div>
+                    <strong>
+                      {item.timeStart} · {item.title}
+                    </strong>
+                    <p>{formatSessionTimeLabel(item)}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="action-row">
+            <button className="btn primary small" type="button" onClick={handleSessionsClick}>
+              Открыть календарь
+            </button>
+          </div>
         </article>
         <article className="card">
           <h3>Срок проживания</h3>
@@ -334,17 +321,6 @@ function PatientDashboardPage({ onNavigate }) {
         </article>
         <article className="card">
           <h3>Уведомления</h3>
-          <ul className="list">
-            {notifications.map((item) => (
-              <li className="list-item" key={item.title}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>{item.details}</p>
-                </div>
-                <span className="tag">Новое</span>
-              </li>
-            ))}
-          </ul>
         </article>
         <article className="card">
           <h3>Сервисы проживания</h3>
@@ -379,20 +355,6 @@ function PatientDashboardPage({ onNavigate }) {
               Открыть сервисы
             </button>
           </div>
-        </article>
-        <article className="card">
-          <h3>Мероприятия рядом</h3>
-          <ul className="list">
-            {nextEvents.map((item) => (
-              <li className="list-item" key={item.title}>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>{item.details}</p>
-                </div>
-                <span className="tag">Афиша</span>
-              </li>
-            ))}
-          </ul>
         </article>
         <article className="card">
           <h3>Дневник состояния здоровья</h3>

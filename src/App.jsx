@@ -14,6 +14,7 @@ import LoginPage from './pages/LoginPage'
 import PatientDashboardPage from './pages/PatientDashboardPage.jsx'
 import PatientDiaryPage from './pages/PatientDiaryPage'
 import RegisterPage from './pages/RegisterPage'
+import PatientSessionsPage from './pages/PatientSessionsPage.jsx'
 import PatientStayRequestsPage from './pages/PatientStayRequestsPage.jsx'
 import PatientServicesPage from './pages/PatientServicesPage.jsx'
 
@@ -29,6 +30,7 @@ const ALLOWED_PAGES = new Set([
   'diary',
   'doctor-diary',
   'doctor-sessions',
+  'patient-sessions',
   'patient-services',
   'patient-stay-requests',
 ])
@@ -93,6 +95,8 @@ function App() {
           <PatientDiaryPage onNavigate={navigate} />
         ) : page === 'patient-services' ? (
           <PatientServicesPage onNavigate={navigate} />
+        ) : page === 'patient-sessions' ? (
+          <PatientSessionsPage onNavigate={navigate} />
         ) : page === 'patient-stay-requests' ? (
           <PatientStayRequestsPage onNavigate={navigate} />
         ) : page === 'doctor-diary' ? (

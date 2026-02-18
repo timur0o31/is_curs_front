@@ -1,166 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ScheduleCalendar from '../components/calendar/ScheduleCalendar'
 import SectionHeading from '../components/SectionHeading'
+import CreateSessionCard from '../components/doctor-sessions/CreateSessionCard'
+import ObservedPatientsCard from '../components/doctor-sessions/ObservedPatientsCard'
+import ScheduleSummaryCard from '../components/doctor-sessions/ScheduleSummaryCard'
+import TodaySessionsCard from '../components/doctor-sessions/TodaySessionsCard'
 import DoctorDiary from '../services/DoctorDiary'
-
-const toIsoDate = (date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-const getTodayIsoDate = () => toIsoDate(new Date())
-
-const getTomorrowIsoDate = () => {
-  const date = new Date()
-  date.setDate(date.getDate() + 1)
-  return toIsoDate(date)
-}
-
-const getDefaultTimeValue = () => {
-  const date = new Date()
-  date.setMinutes(Math.ceil(date.getMinutes() / 10) * 10, 0, 0)
-
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-
-  return `${hours}:${minutes}`
-}
-
-const getCurrentTimeValue = () => {
-  const date = new Date()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
-}
-
-const normalizeDateValue = (value) => {
-  if (!value) return ''
-
-  if (typeof value === 'string') {
-    const directDate = value.slice(0, 10)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) return directDate
-  }
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-
-  return toIsoDate(date)
-}
-
-const normalizeTimeValue = (value) => {
-  if (!value) return ''
-
-  if (typeof value === 'string') {
-    const match = value.match(/^(\d{2}:\d{2})/)
-    if (match) return match[1]
-  }
-
-  return ''
-}
-
-const formatDayLabel = (value) => {
-  if (!value) return '—'
-
-  const date = new Date(`${value}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return '—'
-
-  return date.toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: 'long',
-  })
-}
-
-const formatDateLabel = (value) => {
-  if (!value) return '—'
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '—'
-
-  return date.toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-  })
-}
-
-const mapActivePatients = (items) =>
-  items
-    .filter((item) => item != null)
-    .map((item, index) => {
-      if (typeof item === 'string') {
-        const name = item.trim() || `Пациент #${index + 1}`
-
-        return {
-          id: `name-${name}-${index}`,
-          name,
-          status: 'Активное проживание',
-        }
-      }
-
-      const patientName = String(item?.patientName ?? item?.name ?? '').trim()
-      const patientId = item?.patientId
-      const name = patientName || (patientId != null ? `Пациент #${patientId}` : 'Пациент')
-      const dischargeDate = item?.dischargeDate ?? item?.checkOutDate ?? item?.endDate
-      const dischargeLabel = formatDateLabel(dischargeDate)
-
-      return {
-        id: item?.id ?? `${name}-${index}`,
-        name,
-        status: dischargeLabel === '—' ? 'Активное проживание' : `Активно до ${dischargeLabel}`,
-      }
-    })
-    .sort((first, second) => first.name.localeCompare(second.name, 'ru'))
-
-const mapSessions = (items) =>
-  items
-    .filter((item) => item && typeof item === 'object')
-    .map((item, index) => {
-      const sessionDate = normalizeDateValue(item?.sessionDate)
-      const timeStart = normalizeTimeValue(item?.timeStart)
-
-      if (!sessionDate || !timeStart) return null
-
-      const procedureName = String(
-        item?.procedureName ?? item?.procedureTitle ?? item?.procedure?.name ?? '',
-      ).trim()
-      const procedureId = item?.procedureId ?? null
-
-      return {
-        id: item?.id ?? `session-${sessionDate}-${timeStart}-${index}`,
-        sessionDate,
-        timeStart,
-        procedureId,
-        title: procedureName || (procedureId != null ? `Процедура #${procedureId}` : 'Консультация'),
-      }
-    })
-    .filter(Boolean)
-    .sort((first, second) => {
-      const firstDateTime = `${first.sessionDate}T${first.timeStart}`
-      const secondDateTime = `${second.sessionDate}T${second.timeStart}`
-      return firstDateTime.localeCompare(secondDateTime)
-    })
-
-const mergeSessions = (current, incoming) => {
-  const byId = new Map(current.map((item) => [String(item.id), item]))
-  incoming.forEach((item) => {
-    byId.set(String(item.id), item)
-  })
-
-  return [...byId.values()].sort((first, second) => {
-    const firstDateTime = `${first.sessionDate}T${first.timeStart}`
-    const secondDateTime = `${second.sessionDate}T${second.timeStart}`
-    return firstDateTime.localeCompare(secondDateTime)
-  })
-}
-
-const getErrorMessage = (error, fallback) => {
-  const status = error?.response?.status
-  if (status === 401) return 'Сессия авторизации истекла. Войдите снова.'
-  if (status === 403) return 'Недостаточно прав для работы с расписанием.'
-  if (status === 404) return 'Метод не найден на сервере. Проверьте endpoint на бэкенде.'
-  return fallback
-}
+import {
+  formatDayLabel,
+  formatSessionTimeLabel,
+  getCurrentTimeValue,
+  getDefaultTimeValue,
+  getErrorMessage,
+  getTodayIsoDate,
+  getTomorrowIsoDate,
+  mapActivePatients,
+  mapProcedures,
+  mapSessions,
+  mergeSessions,
+  normalizePositiveInt,
+} from './doctorSessions/utils'
 
 function DoctorSessionsPage({ onNavigate }) {
   const role = String(localStorage.getItem('role') || '').toUpperCase()
@@ -175,9 +34,26 @@ function DoctorSessionsPage({ onNavigate }) {
   const [sessions, setSessions] = useState([])
   const [isSessionsLoading, setIsSessionsLoading] = useState(false)
   const [sessionsError, setSessionsError] = useState('')
+  const [procedures, setProcedures] = useState([])
+  const [isProceduresLoading, setIsProceduresLoading] = useState(false)
+  const [proceduresError, setProceduresError] = useState('')
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [calendarFocusDate, setCalendarFocusDate] = useState('')
+  const [selectedRegistrationPatientId, setSelectedRegistrationPatientId] = useState('')
+  const [selectedRegistrationProcedureId, setSelectedRegistrationProcedureId] = useState('')
+  const [selectedRegistrationSessionId, setSelectedRegistrationSessionId] = useState('')
+  const [registrationProcedureSessions, setRegistrationProcedureSessions] = useState([])
+  const [isProcedureSessionsLoading, setIsProcedureSessionsLoading] = useState(false)
+  const [procedureSessionsError, setProcedureSessionsError] = useState('')
+  const procedureSessionsRequestIdRef = useRef(0)
+  const [isRegisteringPatient, setIsRegisteringPatient] = useState(false)
+  const [registerPatientError, setRegisterPatientError] = useState('')
+  const [registerPatientSuccess, setRegisterPatientSuccess] = useState('')
+  const [patientScheduleSessions, setPatientScheduleSessions] = useState([])
+  const [isPatientScheduleLoading, setIsPatientScheduleLoading] = useState(false)
+  const [patientScheduleError, setPatientScheduleError] = useState('')
+  const patientScheduleRequestIdRef = useRef(0)
 
   const [sessionForm, setSessionForm] = useState(() => ({
     date: getTomorrowIsoDate(),
@@ -200,6 +76,42 @@ function DoctorSessionsPage({ onNavigate }) {
     () => sessions.filter((item) => item.sessionDate > todayIsoDate),
     [sessions, todayIsoDate],
   )
+
+  const nowDateTimeLabel = `${todayIsoDate}T${currentTimeValue}`
+
+  const availableRegistrationSessions = useMemo(
+    () => {
+      if (!selectedRegistrationProcedureId) return []
+      return registrationProcedureSessions.filter(
+        (item) => `${item.sessionDate}T${item.timeStart}` >= nowDateTimeLabel,
+      )
+    },
+    [nowDateTimeLabel, registrationProcedureSessions, selectedRegistrationProcedureId],
+  )
+
+  const selectedRegistrationPatient = useMemo(
+    () => observedPatients.find((item) => String(item.id) === String(selectedRegistrationPatientId)) || null,
+    [observedPatients, selectedRegistrationPatientId],
+  )
+
+  const effectiveRegistrationSessionId = useMemo(() => {
+    const isSelectedPresent = availableRegistrationSessions.some(
+      (item) => String(item.id) === String(selectedRegistrationSessionId),
+    )
+
+    if (isSelectedPresent) return String(selectedRegistrationSessionId)
+
+    return availableRegistrationSessions[0] ? String(availableRegistrationSessions[0].id) : ''
+  }, [availableRegistrationSessions, selectedRegistrationSessionId])
+
+  const selectedRegistrationSession = useMemo(
+    () =>
+      availableRegistrationSessions.find(
+        (item) => String(item.id) === String(effectiveRegistrationSessionId),
+      ) || null,
+    [availableRegistrationSessions, effectiveRegistrationSessionId],
+  )
+  const selectedRegistrationSessionDate = selectedRegistrationSession?.sessionDate || ''
 
   const currentMonthKey = todayIsoDate.slice(0, 7)
 
@@ -327,6 +239,48 @@ function DoctorSessionsPage({ onNavigate }) {
     }
   }, [isApprovedDoctor, isCheckingDoctorStatus, shouldCheckDoctorStatus])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadProcedures = async () => {
+      if (!shouldCheckDoctorStatus || isCheckingDoctorStatus || !isApprovedDoctor) {
+        if (!cancelled) {
+          setProcedures([])
+          setProceduresError('')
+          setIsProceduresLoading(false)
+        }
+        return
+      }
+
+      setIsProceduresLoading(true)
+      setProceduresError('')
+
+      try {
+        const response = await DoctorDiary.getProcedures()
+        const items = Array.isArray(response?.data) ? response.data : []
+
+        if (cancelled) return
+
+        setProcedures(mapProcedures(items))
+      } catch (error) {
+        if (!cancelled) {
+          setProcedures([])
+          setProceduresError(getErrorMessage(error, 'Не удалось загрузить список процедур.'))
+        }
+      } finally {
+        if (!cancelled) {
+          setIsProceduresLoading(false)
+        }
+      }
+    }
+
+    loadProcedures()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isApprovedDoctor, isCheckingDoctorStatus, shouldCheckDoctorStatus])
+
   const showPendingApproval = shouldCheckDoctorStatus && !isCheckingDoctorStatus && !isApprovedDoctor
 
   const handleBackToDashboard = (event) => {
@@ -342,6 +296,162 @@ function DoctorSessionsPage({ onNavigate }) {
       ...prev,
       [name]: value,
     }))
+  }
+
+  useEffect(() => {
+    if (!selectedRegistrationPatient) {
+      setPatientScheduleSessions([])
+      setPatientScheduleError('')
+      setIsPatientScheduleLoading(false)
+      return
+    }
+
+    if (!selectedRegistrationSessionDate) {
+      setPatientScheduleSessions([])
+      setPatientScheduleError('')
+      setIsPatientScheduleLoading(false)
+      return
+    }
+
+    const normalizedPatientId = normalizePositiveInt(selectedRegistrationPatient?.patientId)
+
+    if (normalizedPatientId == null) {
+      setPatientScheduleSessions([])
+      setPatientScheduleError(
+        'Не удалось загрузить сессии на выбранный день: в /api/doctor/active-patients не хватает patientId.',
+      )
+      setIsPatientScheduleLoading(false)
+      return
+    }
+
+    const requestId = patientScheduleRequestIdRef.current + 1
+    patientScheduleRequestIdRef.current = requestId
+    setIsPatientScheduleLoading(true)
+    setPatientScheduleError('')
+
+    const loadPatientDaySessions = async () => {
+      try {
+        const response = await DoctorDiary.getPatientSessions({
+          patientId: normalizedPatientId,
+          date: selectedRegistrationSessionDate,
+        })
+        const items = Array.isArray(response?.data) ? response.data : []
+
+        if (requestId !== patientScheduleRequestIdRef.current) return
+
+        const mapped = mapSessions(items).filter(
+          (item) => item.sessionDate === selectedRegistrationSessionDate,
+        )
+
+        setPatientScheduleSessions(mapped)
+      } catch (error) {
+        if (requestId !== patientScheduleRequestIdRef.current) return
+
+        setPatientScheduleSessions([])
+        setPatientScheduleError(
+          getErrorMessage(error, 'Не удалось загрузить сессии пациента на выбранный день.'),
+        )
+      } finally {
+        if (requestId === patientScheduleRequestIdRef.current) {
+          setIsPatientScheduleLoading(false)
+        }
+      }
+    }
+
+    loadPatientDaySessions()
+  }, [selectedRegistrationPatient, selectedRegistrationSessionDate])
+
+  const handleStartPatientRegistration = (patient) => {
+    const normalizedStayId = normalizePositiveInt(patient?.stayId)
+    const normalizedPatientId = normalizePositiveInt(patient?.patientId)
+
+    procedureSessionsRequestIdRef.current += 1
+    patientScheduleRequestIdRef.current += 1
+    setSelectedRegistrationPatientId(String(patient.id))
+    setSelectedRegistrationProcedureId('')
+    setSelectedRegistrationSessionId('')
+    setRegistrationProcedureSessions([])
+    setIsProcedureSessionsLoading(false)
+    setProcedureSessionsError('')
+    setPatientScheduleSessions([])
+    setPatientScheduleError('')
+    setRegisterPatientError('')
+    setRegisterPatientSuccess('')
+
+    if (normalizedStayId == null && normalizedPatientId == null) {
+      setPatientScheduleError(
+        'Не удалось подготовить запись: в /api/doctor/active-patients не хватает stayId/patientId.',
+      )
+      setIsPatientScheduleLoading(false)
+    }
+  }
+
+  const handleRegistrationSessionChange = (event) => {
+    setSelectedRegistrationSessionId(event.target.value)
+  }
+
+  const handleRegistrationProcedureChange = async (event) => {
+    const procedureIdValue = String(event.target.value || '').trim()
+    setSelectedRegistrationProcedureId(procedureIdValue)
+    setSelectedRegistrationSessionId('')
+    setRegistrationProcedureSessions([])
+    setProcedureSessionsError('')
+    setPatientScheduleSessions([])
+    setPatientScheduleError('')
+    setIsPatientScheduleLoading(false)
+    setRegisterPatientError('')
+    setRegisterPatientSuccess('')
+    if (!procedureIdValue) {
+      setIsProcedureSessionsLoading(false)
+      return
+    }
+
+    const normalizedProcedureId = normalizePositiveInt(procedureIdValue)
+    if (normalizedProcedureId == null) {
+      setProcedureSessionsError('Некорректный идентификатор процедуры.')
+      setIsProcedureSessionsLoading(false)
+      return
+    }
+
+    const requestId = procedureSessionsRequestIdRef.current + 1
+    procedureSessionsRequestIdRef.current = requestId
+    setIsProcedureSessionsLoading(true)
+
+    try {
+      const response = await DoctorDiary.getSessionsByProcedureId(normalizedProcedureId)
+      const items = Array.isArray(response?.data) ? response.data : []
+
+      if (requestId !== procedureSessionsRequestIdRef.current) return
+
+      setRegistrationProcedureSessions(mapSessions(items))
+    } catch (error) {
+      if (requestId !== procedureSessionsRequestIdRef.current) return
+
+      setRegistrationProcedureSessions([])
+      setProcedureSessionsError(
+        getErrorMessage(error, 'Не удалось загрузить сессии по выбранной процедуре.'),
+      )
+    } finally {
+      if (requestId === procedureSessionsRequestIdRef.current) {
+        setIsProcedureSessionsLoading(false)
+      }
+    }
+  }
+
+  const handleCloseRegistrationForm = () => {
+    procedureSessionsRequestIdRef.current += 1
+    patientScheduleRequestIdRef.current += 1
+    setSelectedRegistrationPatientId('')
+    setSelectedRegistrationProcedureId('')
+    setSelectedRegistrationSessionId('')
+    setRegistrationProcedureSessions([])
+    setProcedureSessionsError('')
+    setIsProcedureSessionsLoading(false)
+    setRegisterPatientError('')
+    setRegisterPatientSuccess('')
+    setPatientScheduleSessions([])
+    setPatientScheduleError('')
+    setIsPatientScheduleLoading(false)
   }
 
   const handleCreateSession = async (event) => {
@@ -383,6 +493,67 @@ function DoctorSessionsPage({ onNavigate }) {
       setCreateSessionError(getErrorMessage(error, 'Не удалось создать сессию.'))
     } finally {
       setIsCreatingSession(false)
+    }
+  }
+
+  const handleRegisterPatient = async (event) => {
+    event.preventDefault()
+
+    if (!selectedRegistrationPatient) {
+      setRegisterPatientError('Выберите пациента для записи.')
+      setRegisterPatientSuccess('')
+      return
+    }
+
+    const stayId = normalizePositiveInt(selectedRegistrationPatient.stayId)
+
+    if (stayId == null) {
+      setRegisterPatientError('Не найден stayId пациента. Добавьте stayId в ответ /api/doctor/active-patients.',)
+      setRegisterPatientSuccess('')
+      return
+    }
+
+    if (!selectedRegistrationProcedureId) {
+      setRegisterPatientError('Сначала выберите процедуру, затем сессию.')
+      setRegisterPatientSuccess('')
+      return
+    }
+
+    const sessionId = normalizePositiveInt(effectiveRegistrationSessionId)
+    if (sessionId == null) {
+      setRegisterPatientError('Выберите доступную сессию.')
+      setRegisterPatientSuccess('')
+      return
+    }
+
+    if (!selectedRegistrationSession) {
+      setRegisterPatientError('Не удалось определить выбранную сессию.')
+      setRegisterPatientSuccess('')
+      return
+    }
+
+    setIsRegisteringPatient(true)
+    setRegisterPatientError('')
+    setRegisterPatientSuccess('')
+
+    try {
+      const payload = {
+        sessionId,
+        isNecessary: true,
+        stayId,
+      }
+
+      await DoctorDiary.createMandatoryRegistration(payload)
+
+      setPatientScheduleSessions((prev) => mergeSessions(prev, [selectedRegistrationSession]))
+
+      setRegisterPatientSuccess(
+        `Пациент ${selectedRegistrationPatient.name} записан на выбранную сессию.`,
+      )
+    } catch (error) {
+      setRegisterPatientError(getErrorMessage(error, 'Не удалось записать пациента на сессию.'))
+    } finally {
+      setIsRegisteringPatient(false)
     }
   }
 
@@ -433,133 +604,59 @@ function DoctorSessionsPage({ onNavigate }) {
         </a>
       </div>
       <div className="dashboard-grid dashboard-grid--three">
-        <article className="card">
-          <h3>Приемы сегодня</h3>
-          <p className="muted">Дата: {formatDayLabel(todayIsoDate)}</p>
-          {isSessionsLoading ? (
-            <p className="muted">Загружаем расписание...</p>
-          ) : sessionsError ? (
-            <p className="muted">{sessionsError}</p>
-          ) : todaySessions.length === 0 ? (
-            <p className="muted">На сегодня приемов нет.</p>
-          ) : (
-            <ul className="list">
-              {todaySessions.map((item) => (
-                <li className="list-item" key={item.id}>
-                  <div>
-                    <strong>
-                      {item.timeStart} · {item.title}
-                    </strong>
-                    <p>{formatDayLabel(item.sessionDate)}</p>
-                  </div>
-                  <span className={`status${item.timeStart < currentTimeValue ? ' status--warn' : ''}`}>
-                    {item.timeStart < currentTimeValue ? 'Завершено' : 'Сегодня'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="action-row">
-            <button className="btn ghost small" type="button" onClick={toggleCalendar}>
-              {isCalendarOpen ? 'Скрыть календарь' : 'Показать будущие сессии'}
-            </button>
-          </div>
-        </article>
-        <article className="card">
-          <h3>Пациенты под наблюдением</h3>
-          {isObservedPatientsLoading ? (
-            <p className="muted">Загружаем пациентов с активным проживанием...</p>
-          ) : observedPatients.length === 0 ? (
-            <p className="muted">Нет пациентов с активным проживанием под вашим наблюдением.</p>
-          ) : (
-            <ul className="list">
-              {observedPatients.map((item) => (
-                <li className="list-item" key={item.id}>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <p>{item.status}</p>
-                  </div>
-                  <span className="tag">В работе</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
-        <article className="card">
-          <h3>Сводка по расписанию</h3>
-          <div className="metric-grid">
-            <div className="metric">
-              <span className="metric-label">Сегодня</span>
-              <span className="metric-value">{todaySessions.length}</span>
-            </div>
-            <div className="metric">
-              <span className="metric-label">Будущие</span>
-              <span className="metric-value">{futureSessions.length}</span>
-            </div>
-            <div className="metric">
-              <span className="metric-label">Этот месяц</span>
-              <span className="metric-value">{monthlyFutureCount}</span>
-            </div>
-            <div className="metric">
-              <span className="metric-label">Всего сессий</span>
-              <span className="metric-value">{sessions.length}</span>
-            </div>
-          </div>
-        </article>
-        <article className="card">
-          <h3>Создать сессию</h3>
-          <form className="doctor-session-form" onSubmit={handleCreateSession}>
-            <div className="field-row">
-              <div className="field">
-                <label htmlFor="sessionDate">Дата</label>
-                <input
-                  id="sessionDate"
-                  name="date"
-                  type="date"
-                  min={todayIsoDate}
-                  value={sessionForm.date}
-                  onChange={handleSessionFieldChange}
-                  disabled={isCreatingSession}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="sessionTime">Время</label>
-                <input
-                  id="sessionTime"
-                  name="time"
-                  type="time"
-                  value={sessionForm.time}
-                  onChange={handleSessionFieldChange}
-                  disabled={isCreatingSession}
-                  required
-                />
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="sessionProcedure">ID процедуры (опционально)</label>
-              <input
-                id="sessionProcedure"
-                name="procedureId"
-                type="number"
-                min="1"
-                placeholder="Например, 12"
-                value={sessionForm.procedureId}
-                onChange={handleSessionFieldChange}
-                disabled={isCreatingSession}
-              />
-            </div>
-            {createSessionError ? <p className="doctor-session-feedback error">{createSessionError}</p> : null}
-            {createSessionSuccess ? (
-              <p className="doctor-session-feedback success">{createSessionSuccess}</p>
-            ) : null}
-            <div className="form-actions">
-              <button className="btn primary small" type="submit" disabled={isCreatingSession}>
-                {isCreatingSession ? 'Создаём...' : 'Создать сессию'}
-              </button>
-            </div>
-          </form>
-        </article>
+        <TodaySessionsCard
+          todayIsoDate={todayIsoDate}
+          formatDayLabel={formatDayLabel}
+          isSessionsLoading={isSessionsLoading}
+          sessionsError={sessionsError}
+          todaySessions={todaySessions}
+          isCalendarOpen={isCalendarOpen}
+          onToggleCalendar={toggleCalendar}
+        />
+        <ObservedPatientsCard
+          observedPatients={observedPatients}
+          isObservedPatientsLoading={isObservedPatientsLoading}
+          onStartPatientRegistration={handleStartPatientRegistration}
+          selectedRegistrationPatient={selectedRegistrationPatient}
+          onRegisterPatient={handleRegisterPatient}
+          selectedRegistrationProcedureId={selectedRegistrationProcedureId}
+          onRegistrationProcedureChange={handleRegistrationProcedureChange}
+          effectiveRegistrationSessionId={effectiveRegistrationSessionId}
+          onRegistrationSessionChange={handleRegistrationSessionChange}
+          procedures={procedures}
+          isProceduresLoading={isProceduresLoading}
+          isRegisteringPatient={isRegisteringPatient}
+          availableRegistrationSessions={availableRegistrationSessions}
+          isProcedureSessionsLoading={isProcedureSessionsLoading}
+          procedureSessionsError={procedureSessionsError}
+          formatDayLabel={formatDayLabel}
+          selectedRegistrationSession={selectedRegistrationSession}
+          patientScheduleSessions={patientScheduleSessions}
+          patientScheduleError={patientScheduleError}
+          isPatientScheduleLoading={isPatientScheduleLoading}
+          formatSessionTimeLabel={formatSessionTimeLabel}
+          registerPatientError={registerPatientError}
+          registerPatientSuccess={registerPatientSuccess}
+          onCloseRegistrationForm={handleCloseRegistrationForm}
+        />
+        <ScheduleSummaryCard
+          todayCount={todaySessions.length}
+          futureCount={futureSessions.length}
+          monthlyFutureCount={monthlyFutureCount}
+          totalCount={sessions.length}
+        />
+        <CreateSessionCard
+          sessionForm={sessionForm}
+          onSessionFieldChange={handleSessionFieldChange}
+          onCreateSession={handleCreateSession}
+          isCreatingSession={isCreatingSession}
+          todayIsoDate={todayIsoDate}
+          procedures={procedures}
+          isProceduresLoading={isProceduresLoading}
+          proceduresError={proceduresError}
+          createSessionError={createSessionError}
+          createSessionSuccess={createSessionSuccess}
+        />
       </div>
       {isCalendarOpen ? (
         <ScheduleCalendar

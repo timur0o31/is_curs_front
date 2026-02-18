@@ -177,6 +177,13 @@
   transform: translateY(-1px);
 }
 
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .btn:focus-visible,
 .nav-links a:focus-visible,
 .link:focus-visible {
@@ -736,6 +743,10 @@
 
 .diary-entry {
   background: rgba(255, 255, 255, 0.92);
+}
+
+.diary-entry-text {
+  white-space: pre-line;
 }
 
 .diary-entry--today {
@@ -1343,6 +1354,29 @@
   gap: 14px;
 }
 
+.doctor-treatment-card {
+  gap: 16px;
+}
+
+.doctor-treatment-card .field-row {
+  grid-template-columns: 1fr;
+}
+
+.doctor-patient-schedule-block {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.doctor-patient-schedule-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
 .doctor-session-feedback {
   margin: 0;
   font-size: 0.9rem;
@@ -1358,6 +1392,11 @@
 
 .schedule-calendar-card {
   margin-top: 24px;
+  gap: 18px;
+}
+
+.schedule-calendar-embedded {
+  display: grid;
   gap: 18px;
 }
 
@@ -1422,6 +1461,25 @@
 .schedule-calendar-day--filled {
   border-color: rgba(31, 111, 109, 0.4);
   background: rgba(231, 241, 236, 0.85);
+}
+
+.schedule-calendar-day--range {
+  border-color: rgba(241, 194, 125, 0.62);
+  background: rgba(255, 240, 217, 0.78);
+}
+
+.schedule-calendar-day--range.schedule-calendar-day--filled {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 240, 217, 0.78) 0%,
+    rgba(231, 241, 236, 0.9) 100%
+  );
+}
+
+.schedule-calendar-day--range-start,
+.schedule-calendar-day--range-end {
+  border-color: rgba(241, 194, 125, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(241, 194, 125, 0.5);
 }
 
 .schedule-calendar-day--selected {

@@ -1,20 +1,5 @@
 import { useState } from 'react'
-
-const getTodayIsoDate = () => new Date().toISOString().split('T')[0]
-
-const getDaysBetween = (startDate, endDate) => {
-  if (!startDate || !endDate) return 0
-
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
-
-  const diffMs = end.getTime() - start.getTime()
-  if (diffMs <= 0) return 0
-
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-}
+import { getDaysBetween, getTodayIsoDate } from '../../utils/dateTime'
 
 const formatDays = (value) => {
   if (value <= 0) return ''

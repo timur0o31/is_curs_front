@@ -14,6 +14,7 @@ function Footer({ page = 'home', onNavigate }) {
     page === 'diary' ||
     page === 'doctor-diary' ||
     page === 'doctor-sessions' ||
+    page === 'patient-sessions' ||
     page === 'patient-services' ||
     page === 'patient-stay-requests'
 

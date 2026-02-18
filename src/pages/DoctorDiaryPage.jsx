@@ -1,105 +1,54 @@
 import { useEffect, useMemo, useState } from 'react'
+import PatientTreatmentCard from '../components/doctor-diary/PatientTreatmentCard'
 import DoctorDiaryNoteForm from '../components/forms/DoctorDiaryNoteForm'
 import SectionHeading from '../components/SectionHeading'
 import DoctorDiary from '../services/DoctorDiary'
+import { mapActivePatients, normalizePositiveInt } from './doctorSessions/utils'
 
-const normalizePatientId = (value) => {
-  if (value == null) return null
+const DOCTOR_DIARY_PREFIX = '[DOCTOR]'
+const PATIENT_DIARY_PREFIX = '[PATIENT]'
 
-  const numericValue = Number(value)
-  if (Number.isFinite(numericValue) && numericValue > 0) {
-    return Math.trunc(numericValue)
-  }
-  return null
-}
+const parseDiaryComment = (rawComment) => {
+  const comment = String(rawComment ?? '').trim()
+  if (!comment) return null
 
-const parseDateValue = (value) => {
-  if (!value) return null
-
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-    const date = new Date(`${value}T00:00:00`)
-    return Number.isNaN(date.getTime()) ? null : date
+  if (comment.startsWith(DOCTOR_DIARY_PREFIX)) {
+    const text = comment.slice(DOCTOR_DIARY_PREFIX.length).trim()
+    return {
+      author: 'doctor',
+      text: text || comment,
+    }
   }
 
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-const formatDateTimeLabel = (value) => {
-  const date = parseDateValue(value)
-  if (!date) return 'Без даты'
-
-  const hasTimePart = typeof value === 'string' && value.includes('T')
-
-  if (!hasTimePart) {
-    return date.toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
+  if (comment.startsWith(PATIENT_DIARY_PREFIX)) {
+    const text = comment.slice(PATIENT_DIARY_PREFIX.length).trim()
+    return {
+      author: 'patient',
+      text: text || comment,
+    }
   }
 
-  return date.toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return {
+    author: 'unknown',
+    text: comment,
+  }
 }
-
-const mapActivePatients = (items) =>
-  items
-    .filter((item) => item != null)
-    .map((item, index) => {
-      if (typeof item === 'string') {
-        const name = item.trim() || `Пациент #${index + 1}`
-
-        return {
-          id: `name-${name}-${index}`,
-          patientId: null,
-          name,
-          status: 'Активное проживание',
-        }
-      }
-
-      const patientId = normalizePatientId(
-        item?.patientId ?? item?.patient?.id ?? item?.patient?.patientId ?? null,
-      )
-      const patientName = String(item?.patientName ?? item?.name ?? '').trim()
-      const name = patientName || (patientId != null ? `Пациент #${patientId}` : 'Пациент')
-
-      return {
-        id: item?.id ?? `${name}-${index}`,
-        patientId,
-        name,
-        status: 'Активное проживание',
-      }
-    })
-    .sort((first, second) => first.name.localeCompare(second.name, 'ru'))
 
 const mapDiaryEntries = (items) =>
   items
     .filter((item) => item && typeof item === 'object')
     .map((item, index) => {
-      const text = String(item?.comment ?? item?.note ?? item?.text ?? '').trim()
-      if (!text) return null
-
-      const rawDate = item?.createdAt ?? item?.createdDate ?? item?.updatedAt ?? item?.date ?? null
-      const date = parseDateValue(rawDate)
+      const parsedComment = parseDiaryComment(item?.comment)
+      if (!parsedComment) return null
 
       return {
         id: item?.id ?? `diary-${index}`,
-        text,
-        dateLabel: formatDateTimeLabel(rawDate),
-        sortTime: date ? date.getTime() : 0,
+        text: parsedComment.text,
+        author: parsedComment.author,
       }
     })
     .filter(Boolean)
-    .sort((first, second) => {
-      if (first.sortTime !== second.sortTime) return second.sortTime - first.sortTime
-      return String(second.id).localeCompare(String(first.id), 'ru', { numeric: true })
-    })
+    .sort((first, second) => String(second.id).localeCompare(String(first.id), 'ru', { numeric: true }))
 
 const getErrorMessage = (error, fallback) => {
   const status = error?.response?.status
@@ -126,6 +75,9 @@ function DoctorDiaryPage({ onNavigate }) {
   const [diaryEntries, setDiaryEntries] = useState([])
   const [isDiaryLoading, setIsDiaryLoading] = useState(false)
   const [diaryError, setDiaryError] = useState('')
+  const [isSavingComment, setIsSavingComment] = useState(false)
+  const [saveCommentError, setSaveCommentError] = useState('')
+  const [saveCommentSuccess, setSaveCommentSuccess] = useState('')
 
   const activePatientsWithId = useMemo(
     () => observedPatients.filter((item) => item.patientId != null),
@@ -145,6 +97,11 @@ function DoctorDiaryPage({ onNavigate }) {
       null,
     [activePatientsWithId, selectedPatientId],
   )
+
+  useEffect(() => {
+    setSaveCommentError('')
+    setSaveCommentSuccess('')
+  }, [selectedPatient?.patientId])
 
   useEffect(() => {
     let cancelled = false
@@ -306,6 +263,52 @@ function DoctorDiaryPage({ onNavigate }) {
     onNavigate('doctor-sessions')
   }
 
+  const handleSubmitDoctorComment = async (rawComment) => {
+    const patientId = normalizePositiveInt(selectedPatient?.patientId)
+
+    if (patientId == null) {
+      setSaveCommentError('Сначала выберите пациента из списка.')
+      setSaveCommentSuccess('')
+      return false
+    }
+
+    const comment = String(rawComment ?? '').trim()
+
+    if (!comment) {
+      setSaveCommentError('Комментарий не может быть пустым.')
+      setSaveCommentSuccess('')
+      return false
+    }
+
+    setIsSavingComment(true)
+    setSaveCommentError('')
+    setSaveCommentSuccess('')
+
+    try {
+      const payloadComment = comment.startsWith(DOCTOR_DIARY_PREFIX)
+        ? comment
+        : `${DOCTOR_DIARY_PREFIX} ${comment}`
+      const response = await DoctorDiary.addCommentForPatient(patientId, payloadComment)
+      const createdEntries = mapDiaryEntries([response?.data])
+
+      if (createdEntries[0]) {
+        setDiaryEntries((prev) => {
+          const merged = [createdEntries[0], ...prev]
+          const uniqueById = new Map(merged.map((item) => [String(item.id), item]))
+          return [...uniqueById.values()]
+        })
+      }
+
+      setSaveCommentSuccess('Комментарий сохранен в дневнике пациента.')
+      return true
+    } catch (error) {
+      setSaveCommentError(getErrorMessage(error, 'Не удалось сохранить комментарий врача.'))
+      return false
+    } finally {
+      setIsSavingComment(false)
+    }
+  }
+
   if (isCheckingDoctorStatus) {
     return (
       <section className="section diary doctor-diary" id="doctor-diary">
@@ -348,55 +351,65 @@ function DoctorDiaryPage({ onNavigate }) {
         </div>
       </div>
       <div className="diary-grid diary-grid--doctor">
-        <aside className="card patient-list">
-          <div className="patient-list-header">
-            <div>
-              <h3>Активные пациенты</h3>
-              <p className="muted">{activePatientsWithId.length} доступны для просмотра дневников.</p>
+        <div className="diary-stack">
+          <aside className="card patient-list">
+            <div className="patient-list-header">
+              <div>
+                <h3>Активные пациенты</h3>
+                <p className="muted">{activePatientsWithId.length} доступны для просмотра дневников.</p>
+              </div>
+              <span className="pill">Под наблюдением</span>
             </div>
-            <span className="pill">Под наблюдением</span>
-          </div>
-          <input
-            className="filter-input"
-            type="text"
-            placeholder="Поиск по имени"
-            aria-label="Поиск пациента"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          {isObservedPatientsLoading ? (
-            <p className="muted">Загружаем пациентов...</p>
-          ) : observedPatientsError ? (
-            <p className="muted">{observedPatientsError}</p>
-          ) : activePatientsWithId.length === 0 ? (
-            <p className="muted">
-              Для просмотра дневников нужен `patientId` в `/api/doctor/active-patients`.
-            </p>
-          ) : filteredPatients.length === 0 ? (
-            <p className="muted">По вашему запросу пациентов не найдено.</p>
-          ) : (
-            <div className="patient-cards">
-              {filteredPatients.map((patient) => {
-                const isActive = String(patient.patientId) === String(selectedPatientId)
+            <input
+              className="filter-input"
+              type="text"
+              placeholder="Поиск по имени"
+              aria-label="Поиск пациента"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+            {isObservedPatientsLoading ? (
+              <p className="muted">Загружаем пациентов...</p>
+            ) : observedPatientsError ? (
+              <p className="doctor-session-feedback error">{observedPatientsError}</p>
+            ) : observedPatients.length === 0 ? (
+              <p className="muted">Сейчас нет пациентов с активным проживанием.</p>
+            ) : activePatientsWithId.length === 0 ? (
+              <p className="muted">Не удалось определить идентификаторы пациентов в ответе сервера.</p>
+            ) : filteredPatients.length === 0 ? (
+              <p className="muted">По вашему запросу пациентов не найдено.</p>
+            ) : (
+              <div className="patient-cards">
+                {filteredPatients.map((patient) => {
+                  const isActive = String(patient.patientId) === String(selectedPatientId)
 
-                return (
-                  <button
-                    className={`patient-card${isActive ? ' patient-card--active' : ''}`}
-                    type="button"
-                    key={patient.id}
-                    onClick={() => setSelectedPatientId(String(patient.patientId))}
-                  >
-                    <div>
-                      <strong>{patient.name}</strong>
-                      <p className="muted">ID пациента: {patient.patientId}</p>
-                    </div>
-                    <span className="status">{patient.status}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </aside>
+                  return (
+                    <button
+                      className={`patient-card${isActive ? ' patient-card--active' : ''}`}
+                      type="button"
+                      key={patient.id}
+                      onClick={() => setSelectedPatientId(String(patient.patientId))}
+                    >
+                      <div>
+                        <strong>{patient.name}</strong>
+                        <p className="muted">ID пациента: {patient.patientId}</p>
+                      </div>
+                      <span className="status">{patient.status}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </aside>
+          <DoctorDiaryNoteForm
+            selectedPatient={selectedPatient}
+            onSubmitComment={handleSubmitDoctorComment}
+            isSubmitting={isSavingComment}
+            submitError={saveCommentError}
+            submitSuccess={saveCommentSuccess}
+            disabled={selectedPatient?.patientId == null}
+          />
+        </div>
         <div className="diary-stack">
           <article className="card patient-summary">
             <div className="patient-summary-header">
@@ -438,11 +451,17 @@ function DoctorDiaryPage({ onNavigate }) {
                   >
                     <div className="diary-entry-header">
                       <div>
-                        <span className="diary-date">{entry.dateLabel}</span>
+                        <span className="diary-date">Запись дневника</span>
                         <h3>Запись #{entry.id}</h3>
                       </div>
                       <div className="diary-chips">
-                        <span className="chip chip--neutral">Комментарий пациента</span>
+                        <span className="chip chip--neutral">
+                          {entry.author === 'doctor'
+                            ? 'Врач'
+                            : entry.author === 'patient'
+                              ? 'Пациент'
+                              : 'Комментарий'}
+                        </span>
                       </div>
                     </div>
                     <p className="muted">{entry.text}</p>
@@ -453,7 +472,7 @@ function DoctorDiaryPage({ onNavigate }) {
           </article>
         </div>
         <div className="diary-stack">
-          <DoctorDiaryNoteForm />
+          <PatientTreatmentCard selectedPatient={selectedPatient} />
         </div>
       </div>
     </section>

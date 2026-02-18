@@ -14,6 +14,7 @@ function Header({ page = 'home', onNavigate }) {
     page === 'diary' ||
     page === 'doctor-diary' ||
     page === 'doctor-sessions' ||
+    page === 'patient-sessions' ||
     page === 'patient-services' ||
     page === 'patient-stay-requests'
 
@@ -29,6 +30,7 @@ function Header({ page = 'home', onNavigate }) {
     diary: 'Дневник пациента',
     'doctor-diary': 'Дневник пациентов',
     'doctor-sessions': 'Расписание врача',
+    'patient-sessions': 'Расписание пациента',
     'patient-services': 'Сервисы проживания',
     'patient-stay-requests': 'Заявки на проживание',
   }

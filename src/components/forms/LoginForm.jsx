@@ -15,8 +15,6 @@ function LoginForm({ onNavigate }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-
-    // Сбрасываем предыдущую ошибку
     setError(null);
     setIsLoading(true);
 

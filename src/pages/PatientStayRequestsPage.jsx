@@ -4,6 +4,7 @@ import SectionHeading from '../components/SectionHeading'
 import StayExtensionForm from '../components/forms/StayExtensionForm'
 import StayRequestForm from '../components/forms/StayRequestForm'
 import PatientStay from '../services/PatientStay'
+import { formatRuDate, isOnOrAfterToday, parseDateValue } from '../utils/dateTime'
 
 const STATUS_VIEW = {
   PENDING: { label: 'Ожидает', tone: 'warn' },
@@ -44,35 +45,15 @@ const writeCachedRequestHistory = (cacheKey, requests) => {
   }
 }
 
-const getTodayStart = () => {
-  const date = new Date()
-  date.setHours(0, 0, 0, 0)
-  return date
-}
-
-const isOnOrAfterToday = (value) => {
-  if (!value) return true
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return false
-
-  date.setHours(0, 0, 0, 0)
-  return date.getTime() >= getTodayStart().getTime()
-}
-
-const formatDate = (value) => {
-  if (!value) return '—'
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return String(value)
-  }
-
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-  }).format(date)
-}
+const formatDate = (value) =>
+  formatRuDate(
+    value,
+    {
+      day: '2-digit',
+      month: '2-digit',
+    },
+    { keepRawOnInvalid: true },
+  )
 
 const formatPeriod = (admissionDate, dischargeDate) => {
   if (!admissionDate && !dischargeDate) {
@@ -93,8 +74,8 @@ const formatPeriod = (admissionDate, dischargeDate) => {
 const mapStayRequestToView = (request) => {
   const statusData = STATUS_VIEW[request?.status] || { label: request?.status || 'Неизвестно', tone: '' }
   const requestType = request?.type === 'EXPANSION' ? 'Продление проживания' : 'Новая заявка'
-  const createdAt = request?.createdAt ? new Date(request.createdAt) : null
-  const sortTimestamp = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt.getTime() : Date.now()
+  const createdAt = parseDateValue(request?.createdAt)
+  const sortTimestamp = createdAt ? createdAt.getTime() : Date.now()
 
   return {
     id: request?.id ? `REQ-${request.id}` : `REQ-${sortTimestamp}`,
@@ -209,12 +190,10 @@ function PatientStayRequestsPage({ onNavigate }) {
       setIsLoadingHistory(false)
       return
     }
-
     const cached = readCachedRequestHistory(requestHistoryCacheKey)
     if (cached.length > 0) {
       setRequestHistory(cached)
     }
-
     setIsLoadingHistory(true)
 
     try {
@@ -234,7 +213,6 @@ function PatientStayRequestsPage({ onNavigate }) {
       setIsLoadingHistory(false)
     }
   }, [handleError, requestHistoryCacheKey])
-
   useEffect(() => {
     loadRequestHistory()
   }, [loadRequestHistory])
@@ -247,7 +225,6 @@ function PatientStayRequestsPage({ onNavigate }) {
       }
       return false
     }
-
     setIsSubmittingCheckIn(true)
 
     try {
@@ -255,10 +232,8 @@ function PatientStayRequestsPage({ onNavigate }) {
         admissionDate: formData.checkIn,
         dischargeDate: formData.checkOut,
       }
-
       const response = await PatientStay.createCheckInRequest(payload)
       const created = response.data
-
       if (created && typeof created === 'object') {
         const createdItem = mapStayRequestToView(created)
         setRequestHistory((prev) => {
