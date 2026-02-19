@@ -1210,6 +1210,15 @@
   border-bottom: none;
 }
 
+.medication-row {
+  cursor: pointer;
+}
+
+.medication-row--selected,
+.medication-row--selected:hover {
+  background: rgba(31, 111, 109, 0.12);
+}
+
 .table-actions {
   display: flex;
   flex-wrap: wrap;

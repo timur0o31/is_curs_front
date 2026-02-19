@@ -11,6 +11,11 @@ function Footer({ page = 'home', onNavigate }) {
     page === 'admin-stays' ||
     page === 'admin-stay-requests' ||
     page === 'admin-doctor-requests' ||
+    page === 'admin-medications' ||
+    page === 'admin-procedures' ||
+    page === 'admin-rooms' ||
+    page === 'admin-lockers' ||
+    page === 'admin-rooms-lockers' ||
     page === 'diary' ||
     page === 'doctor-diary' ||
     page === 'doctor-sessions' ||

@@ -4,6 +4,10 @@ import Footer from './components/Footer'
 import Header from './components/Header'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminDoctorRequestsPage from './pages/admin/AdminDoctorRequestsPage'
+import AdminLockersPage from './pages/admin/AdminLockersPage'
+import AdminMedicationsPage from './pages/admin/AdminMedicationsPage'
+import AdminProceduresPage from './pages/admin/AdminProceduresPage'
+import AdminRoomsPage from './pages/admin/AdminRoomsPage'
 import AdminStayRequestsPage from './pages/admin/AdminStayRequestsPage'
 import AdminStaysPage from './pages/admin/AdminStaysPage'
 import DoctorDiaryPage from './pages/DoctorDiaryPage'
@@ -27,6 +31,11 @@ const ALLOWED_PAGES = new Set([
   'admin-stays',
   'admin-stay-requests',
   'admin-doctor-requests',
+  'admin-medications',
+  'admin-procedures',
+  'admin-rooms',
+  'admin-lockers',
+  'admin-rooms-lockers',
   'diary',
   'doctor-diary',
   'doctor-sessions',
@@ -91,6 +100,16 @@ function App() {
           <AdminStayRequestsPage onNavigate={navigate} />
         ) : page === 'admin-doctor-requests' ? (
           <AdminDoctorRequestsPage onNavigate={navigate} />
+        ) : page === 'admin-medications' ? (
+          <AdminMedicationsPage onNavigate={navigate} />
+        ) : page === 'admin-procedures' ? (
+          <AdminProceduresPage onNavigate={navigate} />
+        ) : page === 'admin-rooms' ? (
+          <AdminRoomsPage onNavigate={navigate} />
+        ) : page === 'admin-lockers' ? (
+          <AdminLockersPage onNavigate={navigate} />
+        ) : page === 'admin-rooms-lockers' ? (
+          <AdminRoomsPage onNavigate={navigate} />
         ) : page === 'diary' ? (
           <PatientDiaryPage onNavigate={navigate} />
         ) : page === 'patient-services' ? (

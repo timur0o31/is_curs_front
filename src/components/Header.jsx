@@ -11,6 +11,11 @@ function Header({ page = 'home', onNavigate }) {
     page === 'admin-stays' ||
     page === 'admin-stay-requests' ||
     page === 'admin-doctor-requests' ||
+    page === 'admin-medications' ||
+    page === 'admin-procedures' ||
+    page === 'admin-rooms' ||
+    page === 'admin-lockers' ||
+    page === 'admin-rooms-lockers' ||
     page === 'diary' ||
     page === 'doctor-diary' ||
     page === 'doctor-sessions' ||
@@ -27,6 +32,11 @@ function Header({ page = 'home', onNavigate }) {
     'admin-stays': 'Проживания',
     'admin-stay-requests': 'Заявки по проживанию',
     'admin-doctor-requests': 'Регистрация врачей',
+    'admin-medications': 'Медикаменты',
+    'admin-procedures': 'Процедуры',
+    'admin-rooms': 'Комнаты',
+    'admin-lockers': 'Шкафчики',
+    'admin-rooms-lockers': 'Комнаты и шкафчики',
     diary: 'Дневник пациента',
     'doctor-diary': 'Дневник пациентов',
     'doctor-sessions': 'Расписание врача',

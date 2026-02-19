@@ -3,6 +3,10 @@ const adminNavItems = [
   { page: 'admin-stays', label: 'Проживания' },
   { page: 'admin-stay-requests', label: 'Заявки по проживанию' },
   { page: 'admin-doctor-requests', label: 'Регистрация врачей' },
+  { page: 'admin-medications', label: 'Медикаменты' },
+  { page: 'admin-procedures', label: 'Процедуры' },
+  { page: 'admin-rooms', label: 'Комнаты' },
+  { page: 'admin-lockers', label: 'Шкафчики' },
 ]
 
 function AdminNav({ current = 'admin', onNavigate }) {
