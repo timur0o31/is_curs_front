@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 
 const createDefaultLockerForm = () => ({
   lockerNumber: '',
-  patientId: '',
 })
 
 function normalizeInitialData(initialData) {
@@ -65,21 +64,7 @@ function AdminLockerForm({ initialData, title, description, submitLabel = 'Со�
               required
             />
           </div>
-          <div className="field">
-            <label htmlFor="locker-patient-id">ID пациента</label>
-            <input
-              id="locker-patient-id"
-              type="number"
-              min="1"
-              value={form.patientId}
-              onChange={handleChange('patientId')}
-              placeholder="Опционально"
-            />
-          </div>
         </div>
-
-        <p className="muted">`patientId` можно оставить пустым, если шкафчик не закреплен.</p>
-
         <div className="form-actions">
           {onCancel ? (
             <button className="btn ghost" type="button" onClick={onCancel}>

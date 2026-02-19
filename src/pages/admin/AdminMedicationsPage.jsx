@@ -1,38 +1,58 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import AdminNav from '../../components/admin/AdminNav'
 import SectionHeading from '../../components/SectionHeading'
-import AdminMedicationForm, { createDefaultMedicationForm } from '../../components/forms/AdminMedicationForm'
+import AdminMedicationForm from '../../components/forms/AdminMedicationForm'
+import api from "../../config/Api.js";
 
-const initialMedications = [
-]
-
-const buildMedicationId = (items) => {
-  const maxIndex = items.reduce((max, item) => {
-    const match = String(item.id).match(/(\d+)/)
-    if (!match) return max
-    return Math.max(max, Number(match[1]))
-  }, 0)
-  return `MED-${String(maxIndex + 1).padStart(3, '0')}`
-}
+const API_URL = '/medicaments'
 
 function AdminMedicationsPage({ onNavigate }) {
-  const [medications, setMedications] = useState(initialMedications)
+  const [medications, setMedications] = useState([])
   const [selectedMedicationId, setSelectedMedicationId] = useState(null)
   const [formMode, setFormMode] = useState(null)
   const [pendingDeleteId, setPendingDeleteId] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  // ===== API =====
+
+  const fetchMedications = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch(api.BASE_URL + API_URL, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        }
+      })
+      if (!res.ok) throw new Error('Ошибка загрузки')
+      const data = await res.json()
+      setMedications(data)
+    } catch (e) {
+      toast.error('Не удалось загрузить медикаменты')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMedications()
+  }, [])
+
+  // ===== selected =====
 
   const selectedMedication = useMemo(
-    () => medications.find((item) => String(item.id) === String(selectedMedicationId)) ?? null,
+    () => medications.find((m) => m.id === selectedMedicationId) ?? null,
     [medications, selectedMedicationId],
   )
 
   const pendingDeleteMedication = useMemo(
-    () => medications.find((item) => String(item.id) === String(pendingDeleteId)) ?? null,
+    () => medications.find((m) => m.id === pendingDeleteId) ?? null,
     [medications, pendingDeleteId],
   )
 
-  const handleSelectMedication = (item) => {
+  // ===== actions =====
+
+  const handleSelect = (item) => {
     setSelectedMedicationId(item.id)
   }
 
@@ -43,16 +63,15 @@ function AdminMedicationsPage({ onNavigate }) {
 
   const handleEdit = () => {
     if (!selectedMedication) {
-      toast.warn('Сначала выберите медикамент в таблице')
+      toast.warn('Сначала выберите медикамент')
       return
     }
-    setPendingDeleteId(null)
     setFormMode('edit')
   }
 
   const handleDeleteRequest = () => {
     if (!selectedMedication) {
-      toast.warn('Сначала выберите медикамент в таблице')
+      toast.warn('Сначала выберите медикамент')
       return
     }
     setPendingDeleteId(selectedMedication.id)
@@ -62,181 +81,212 @@ function AdminMedicationsPage({ onNavigate }) {
     setFormMode(null)
   }
 
-  const handleCreateSubmit = (formData) => {
+  // ===== create =====
+
+  const handleCreateSubmit = async (formData) => {
     if (!formData.name) {
-      toast.warn('Укажите название медикамента')
+      toast.warn('Укажите название')
       return
     }
 
-    const createdItem = {
-      ...createDefaultMedicationForm(),
-      ...formData,
-      id: buildMedicationId(medications),
-    }
+    try {
+      const res = await fetch(api.BASE_URL + API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}`},
+        body: JSON.stringify(formData),
+      })
 
-    setMedications((prev) => [createdItem, ...prev])
-    setSelectedMedicationId(createdItem.id)
-    setFormMode(null)
-    toast.success('Медикамент добавлен')
+      if (!res.ok) throw new Error()
+
+      const created = await res.json()
+
+      setSelectedMedicationId(created.id)
+      setFormMode(null)
+      fetchMedications()
+
+      toast.success('Медикамент добавлен')
+    } catch {
+      toast.error('Ошибка создания')
+    }
   }
 
-  const handleEditSubmit = (formData) => {
-    if (!selectedMedication) {
-      toast.warn('Выберите медикамент для изменения')
-      return
-    }
+  // ===== edit =====
 
-    if (!formData.name) {
-      toast.warn('Укажите название медикамента')
-      return
-    }
+  const handleEditSubmit = async (formData) => {
+    if (!selectedMedication) return
 
-    setMedications((prev) =>
-      prev.map((item) =>
-        item.id === selectedMedication.id
-          ? {
-              ...item,
-              ...formData,
-            }
-          : item,
-      ),
-    )
-    setFormMode(null)
-    toast.success('Медикамент обновлен')
-  }
+    try {
+      const res = await fetch(`${API_URL}/${selectedMedication.id}`, {
+method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(formData),
+})
 
-  const handleDeleteConfirm = () => {
-    if (!pendingDeleteMedication) return
+if (!res.ok) throw new Error()
 
-    setMedications((prev) => prev.filter((item) => item.id !== pendingDeleteMedication.id))
-    if (String(selectedMedicationId) === String(pendingDeleteMedication.id)) {
+setFormMode(null)
+fetchMedications()
+toast.success('Медикамент обновлён')
+} catch {
+  toast.error('Ошибка обновления')
+}
+}
+
+// ===== delete =====
+
+const handleDeleteConfirm = async () => {
+  if (!pendingDeleteMedication) return
+
+  try {
+    const res = await fetch(`${API_URL}/${pendingDeleteMedication.id}`, {
+      method: 'DELETE',
+    })
+
+    if (!res.ok) throw new Error()
+
+    if (selectedMedicationId === pendingDeleteMedication.id) {
       setSelectedMedicationId(null)
     }
-    setPendingDeleteId(null)
-    setFormMode(null)
-    toast.success('Медикамент удален')
-  }
 
-  return (
+    setPendingDeleteId(null)
+    fetchMedications()
+    toast.success('Медикамент удалён')
+  } catch {
+    toast.error('Ошибка удаления')
+  }
+}
+
+return (
     <section className="section dashboard" id="admin-medications">
       <SectionHeading
-        eyebrow="Администрирование"
-        title="Медикаменты"
-        description="Список препаратов в стиле админ-таблиц, форма вынесена отдельно."
+          eyebrow="Администрирование"
+          title="Медикаменты"
+          description="Справочник медикаментов"
       />
+
       <AdminNav current="admin-medications" onNavigate={onNavigate} />
 
-      {formMode == null ? (
-        <article className="card table-card">
-          <div className="table-toolbar">
-            <div>
+      {/* ===== TABLE ===== */}
+      {formMode == null && (
+          <article className="card table-card">
+            <div className="table-toolbar">
               <h3>Список медикаментов</h3>
-            </div>
-            <div className="action-row">
-              <button className="btn primary small" type="button" onClick={handleCreate}>
-                Создать
-              </button>
-              <button className="btn ghost small" type="button" onClick={handleEdit} disabled={!selectedMedication}>
-                Изменить
-              </button>
-              <button
-                className="btn danger small"
-                type="button"
-                onClick={handleDeleteRequest}
-                disabled={!selectedMedication}
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
 
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
+              <div className="action-row">
+                <button className="btn primary small" onClick={handleCreate}>
+                  Создать
+                </button>
+                <button
+                    className="btn ghost small"
+                    onClick={handleEdit}
+                    disabled={!selectedMedication}
+                >
+                  Изменить
+                </button>
+                <button
+                    className="btn danger small"
+                    onClick={handleDeleteRequest}
+                    disabled={!selectedMedication}
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
                 <tr>
                   <th>ID</th>
                   <th>Название</th>
                   <th>Описание</th>
                 </tr>
-              </thead>
-              <tbody>
-                {medications.length === 0 ? (
-                  <tr>
-                    <td colSpan={3}>Медикаменты не найдены</td>
-                  </tr>
+                </thead>
+                <tbody>
+                {loading ? (
+                    <tr>
+                      <td colSpan={3}>Загрузка...</td>
+                    </tr>
+                ) : medications.length === 0 ? (
+                    <tr>
+                      <td colSpan={3}>Медикаменты не найдены</td>
+                    </tr>
                 ) : (
-                  medications.map((item) => {
-                    const isSelected = String(item.id) === String(selectedMedicationId)
-                    return (
-                      <tr
-                        key={item.id}
-                        className={isSelected ? 'medication-row medication-row--selected' : 'medication-row'}
-                        onClick={() => handleSelectMedication(item)}
-                      >
-                        <td>{item.id}</td>
-                        <td>{item.name}</td>
-                        <td>{item.notes || '—'}</td>
-                      </tr>
-                    )
-                  })
+                    medications.map((item) => {
+                      const isSelected = item.id === selectedMedicationId
+
+                      return (
+                          <tr
+                              key={item.id}
+                              className={
+                                isSelected
+                                    ? 'medication-row medication-row--selected'
+                                    : 'medication-row'
+                              }
+                              onClick={() => handleSelect(item)}
+                          >
+                            <td>{item.id}</td>
+                            <td>{item.name}</td>
+                            <td>{item.description || '—'}</td>
+                          </tr>
+                      )
+                    })
                 )}
-              </tbody>
-            </table>
-          </div>
-        </article>
-      ) : null}
+                </tbody>
+              </table>
+            </div>
+          </article>
+      )}
 
-      {formMode === 'create' ? (
-        <article className="card form-card">
-          <AdminMedicationForm
-            key="create"
-            title="Новый медикамент"
-            description="Поля формы оставлены как были."
-            submitLabel="Сохранить медикамент"
-            onSubmit={handleCreateSubmit}
-            onCancel={handleFormCancel}
-          />
-        </article>
-      ) : null}
+      {/* ===== CREATE ===== */}
+      {formMode === 'create' && (
+          <article className="card form-card">
+            <AdminMedicationForm
+                title="Новый медикамент"
+                submitLabel="Сохранить"
+                onSubmit={handleCreateSubmit}
+                onCancel={handleFormCancel}
+            />
+          </article>
+      )}
 
-      {formMode === 'edit' ? (
-        <article className="card form-card">
-          <AdminMedicationForm
-            initialData={selectedMedication}
-            title="Изменить медикамент"
-            description={
-              selectedMedication
-                ? `Редактирование: ${selectedMedication.name} (${selectedMedication.id})`
-                : 'Выберите медикамент в списке.'
-            }
-            submitLabel="Сохранить изменения"
-            onSubmit={handleEditSubmit}
-            onCancel={handleFormCancel}
-          />
-        </article>
-      ) : null}
+      {/* ===== EDIT ===== */}
+      {formMode === 'edit' && (
+          <article className="card form-card">
+            <AdminMedicationForm
+                initialData={selectedMedication}
+                title="Изменить медикамент"
+                submitLabel="Сохранить изменения"
+                onSubmit={handleEditSubmit}
+                onCancel={handleFormCancel}
+            />
+          </article>
+      )}
 
-      {pendingDeleteMedication ? (
-        <article className="card form-card">
-          <div>
+      {/* ===== DELETE ===== */}
+      {pendingDeleteMedication && (
+          <article className="card form-card">
             <h3>Удалить медикамент</h3>
             <p className="muted">
-              Вы уверены, что хотите удалить <strong>{pendingDeleteMedication.name}</strong> (
+              Удалить <strong>{pendingDeleteMedication.name}</strong> (
               {pendingDeleteMedication.id})?
             </p>
-          </div>
-          <div className="form-actions">
-            <button className="btn ghost" type="button" onClick={() => setPendingDeleteId(null)}>
-              Отмена
-            </button>
-            <button className="btn danger" type="button" onClick={handleDeleteConfirm}>
-              Удалить
-            </button>
-          </div>
-        </article>
-      ) : null}
+
+            <div className="form-actions">
+              <button
+                  className="btn ghost"
+                  onClick={() => setPendingDeleteId(null)}
+              >
+                Отмена
+              </button>
+              <button className="btn danger" onClick={handleDeleteConfirm}>
+                Удалить
+              </button>
+            </div>
+          </article>
+      )}
     </section>
-  )
+)
 }
 
 export default AdminMedicationsPage

@@ -1,37 +1,45 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import AdminNav from '../../components/admin/AdminNav'
 import SectionHeading from '../../components/SectionHeading'
-import AdminRoomForm, { createDefaultRoomForm } from '../../components/forms/AdminRoomForm'
+import AdminRoomForm from '../../components/forms/AdminRoomForm'
+import api from "../../config/Api.js";
 
-const initialRooms = []
-
-const buildRoomId = (items) => {
-  const maxIndex = items.reduce((max, item) => {
-    const match = String(item.id).match(/(\d+)/)
-    if (!match) return max
-    return Math.max(max, Number(match[1]))
-  }, 0)
-  return `ROOM-${String(maxIndex + 1).padStart(3, '0')}`
-}
+const API_URL = '/rooms'
 
 const getOccupiedMeta = (isOccupied) =>
-  isOccupied ? { label: 'Занята', tone: 'warn' } : { label: 'Свободна', tone: 'success' }
+    isOccupied ? { label: 'Занята', tone: 'warn' } : { label: 'Свободна', tone: 'success' }
 
 function AdminRoomsPage({ onNavigate }) {
-  const [rooms, setRooms] = useState(initialRooms)
+  const [rooms, setRooms] = useState([])
   const [selectedRoomId, setSelectedRoomId] = useState(null)
   const [formMode, setFormMode] = useState(null)
   const [pendingDeleteId, setPendingDeleteId] = useState(null)
 
+  useEffect(() => {
+    fetch(api.BASE_URL + API_URL, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+      }
+    })
+        .then((res) => {
+          if (!res.ok) throw new Error()
+          return res.json()
+        })
+        .then(setRooms)
+        .catch(() => toast.error('Ошибка загрузки комнат'))
+  }, [])
+
   const selectedRoom = useMemo(
-    () => rooms.find((item) => String(item.id) === String(selectedRoomId)) ?? null,
-    [rooms, selectedRoomId],
+      () => rooms.find((item) => String(item.id) === String(selectedRoomId)) ?? null,
+      [rooms, selectedRoomId],
   )
 
   const pendingDeleteRoom = useMemo(
-    () => rooms.find((item) => String(item.id) === String(pendingDeleteId)) ?? null,
-    [rooms, pendingDeleteId],
+      () => rooms.find((item) => String(item.id) === String(pendingDeleteId)) ?? null,
+      [rooms, pendingDeleteId],
   )
 
   const handleSelectRoom = (item) => {
@@ -45,16 +53,16 @@ function AdminRoomsPage({ onNavigate }) {
 
   const handleEdit = () => {
     if (!selectedRoom) {
-      toast.warn('Сначала выберите комнату в таблице')
+      toast.warn('Сначала выберите комнату')
       return
     }
-    setPendingDeleteId(null)
     setFormMode('edit')
+    setPendingDeleteId(null)
   }
 
   const handleDeleteRequest = () => {
     if (!selectedRoom) {
-      toast.warn('Сначала выберите комнату в таблице')
+      toast.warn('Сначала выберите комнату')
       return
     }
     setPendingDeleteId(selectedRoom.id)
@@ -64,196 +72,188 @@ function AdminRoomsPage({ onNavigate }) {
     setFormMode(null)
   }
 
-  const handleCreateSubmit = (formData) => {
+  const handleCreateSubmit = async (formData) => {
     if (!Number.isInteger(formData.roomNumber) || formData.roomNumber <= 0) {
       toast.warn('Укажите корректный номер комнаты')
       return
     }
 
-    const alreadyExists = rooms.some((item) => Number(item.roomNumber) === Number(formData.roomNumber))
-    if (alreadyExists) {
-      toast.warn('Комната с таким номером уже есть')
-      return
-    }
+    try {
+      const res = await fetch(api.BASE_URL + API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      })
 
-    const createdItem = {
-      ...createDefaultRoomForm(),
-      ...formData,
-      id: buildRoomId(rooms),
-    }
+      if (!res.ok) throw new Error()
 
-    setRooms((prev) => [createdItem, ...prev])
-    setSelectedRoomId(createdItem.id)
-    setFormMode(null)
-    toast.success('Комната добавлена')
+      const createdRoom = await res.json()
+
+      setRooms((prev) => [createdRoom, ...prev])
+      setSelectedRoomId(createdRoom.id)
+      setFormMode(null)
+
+      toast.success('Комната добавлена')
+    } catch {
+      toast.error('Ошибка при создании комнаты')
+    }
   }
 
-  const handleEditSubmit = (formData) => {
-    if (!selectedRoom) {
-      toast.warn('Выберите комнату для изменения')
-      return
-    }
-
-    if (!Number.isInteger(formData.roomNumber) || formData.roomNumber <= 0) {
-      toast.warn('Укажите корректный номер комнаты')
-      return
-    }
-
-    const duplicate = rooms.some(
-      (item) => item.id !== selectedRoom.id && Number(item.roomNumber) === Number(formData.roomNumber),
-    )
-    if (duplicate) {
-      toast.warn('Комната с таким номером уже есть')
-      return
-    }
-
-    setRooms((prev) =>
-      prev.map((item) =>
-        item.id === selectedRoom.id
-          ? {
-              ...item,
-              ...formData,
-            }
-          : item,
-      ),
-    )
-    setFormMode(null)
-    toast.success('Комната обновлена')
-  }
-
-  const handleDeleteConfirm = () => {
+  /* =========================
+     DELETE ROOM (DELETE)
+     ========================= */
+  const handleDeleteConfirm = async () => {
     if (!pendingDeleteRoom) return
 
-    setRooms((prev) => prev.filter((item) => item.id !== pendingDeleteRoom.id))
-    if (String(selectedRoomId) === String(pendingDeleteRoom.id)) {
-      setSelectedRoomId(null)
+    try {
+      const res = await fetch(`${api.BASE_URL + API_URL}/${pendingDeleteRoom.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        }
+      })
+
+      if (!res.ok) throw new Error()
+
+      setRooms((prev) => prev.filter((item) => item.id !== pendingDeleteRoom.id))
+
+      if (String(selectedRoomId) === String(pendingDeleteRoom.id)) {
+        setSelectedRoomId(null)
+      }
+
+      setPendingDeleteId(null)
+      setFormMode(null)
+
+      toast.success('Комната удалена')
+    } catch {
+      toast.error('Невозможно удалить комнату. Она занята пациентом')
     }
-    setPendingDeleteId(null)
-    setFormMode(null)
-    toast.success('Комната удалена')
   }
 
   return (
-    <section className="section dashboard" id="admin-rooms">
-      <SectionHeading
-        eyebrow="Администрирование"
-        title="Комнаты"
-        description="Управление списком комнат: добавление, изменение и удаление."
-      />
-      <AdminNav current="admin-rooms" onNavigate={onNavigate} />
+      <section className="section dashboard" id="admin-rooms">
+        <SectionHeading
+            eyebrow="Администрирование"
+            title="Комнаты"
+            description="Управление списком комнат: добавление, изменение и удаление."
+        />
 
-      {formMode == null ? (
-        <article className="card table-card">
-          <div className="table-toolbar">
-            <div>
-              <h3>Список комнат</h3>
-            </div>
-            <div className="action-row">
-              <button className="btn primary small" type="button" onClick={handleCreate}>
-                Создать
-              </button>
-              <button className="btn ghost small" type="button" onClick={handleEdit} disabled={!selectedRoom}>
-                Изменить
-              </button>
-              <button
-                className="btn danger small"
-                type="button"
-                onClick={handleDeleteRequest}
-                disabled={!selectedRoom}
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
+        <AdminNav current="admin-rooms" onNavigate={onNavigate} />
 
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Номер комнаты</th>
-                  <th>Занятость</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.length === 0 ? (
+        {formMode == null && (
+            <article className="card table-card">
+              <div className="table-toolbar">
+                <h3>Список комнат</h3>
+
+                <div className="action-row">
+                  <button className="btn primary small" onClick={handleCreate}>
+                    Создать
+                  </button>
+                  <button
+                      className="btn ghost small"
+                      onClick={handleEdit}
+                      disabled={!selectedRoom}
+                  >
+                    Изменить
+                  </button>
+                  <button
+                      className="btn danger small"
+                      onClick={handleDeleteRequest}
+                      disabled={!selectedRoom}
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
+
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
                   <tr>
-                    <td colSpan={3}>Комнаты не найдены</td>
+                    <th>ID</th>
+                    <th>Номер комнаты</th>
+                    <th>Занятость</th>
                   </tr>
-                ) : (
-                  rooms.map((item) => {
-                    const isSelected = String(item.id) === String(selectedRoomId)
-                    const occupied = getOccupiedMeta(item.isOccupied)
-
-                    return (
-                      <tr
-                        key={item.id}
-                        className={isSelected ? 'medication-row medication-row--selected' : 'medication-row'}
-                        onClick={() => handleSelectRoom(item)}
-                      >
-                        <td>{item.id}</td>
-                        <td>{item.roomNumber}</td>
-                        <td>
-                          <span className={`status status--${occupied.tone}`}>{occupied.label}</span>
-                        </td>
+                  </thead>
+                  <tbody>
+                  {rooms.length === 0 ? (
+                      <tr>
+                        <td colSpan={3}>Комнаты не найдены</td>
                       </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </article>
-      ) : null}
+                  ) : (
+                      rooms.map((item) => {
+                        const isSelected = String(item.id) === String(selectedRoomId)
+                        const occupied = getOccupiedMeta(item.isOccupied)
 
-      {formMode === 'create' ? (
-        <article className="card form-card">
-          <AdminRoomForm
-            key="create"
-            title="Новая комната"
-            description="Форма соответствует модели Room из backend."
-            submitLabel="Сохранить комнату"
-            onSubmit={handleCreateSubmit}
-            onCancel={handleFormCancel}
-          />
-        </article>
-      ) : null}
+                        return (
+                            <tr
+                                key={item.id}
+                                className={isSelected ? 'medication-row medication-row--selected' : 'medication-row'}
+                                onClick={() => handleSelectRoom(item)}
+                            >
+                              <td>{item.id}</td>
+                              <td>{item.roomNumber}</td>
+                              <td>
+                          <span className={`status status--${occupied.tone}`}>
+                            {occupied.label}
+                          </span>
+                              </td>
+                            </tr>
+                        )
+                      })
+                  )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+        )}
 
-      {formMode === 'edit' ? (
-        <article className="card form-card">
-          <AdminRoomForm
-            initialData={selectedRoom}
-            title="Изменить комнату"
-            description={
-              selectedRoom ? `Редактирование комнаты ${selectedRoom.roomNumber} (${selectedRoom.id})` : ''
-            }
-            submitLabel="Сохранить изменения"
-            onSubmit={handleEditSubmit}
-            onCancel={handleFormCancel}
-          />
-        </article>
-      ) : null}
+        {formMode === 'create' && (
+            <article className="card form-card">
+              <AdminRoomForm
+                  title="Новая комната"
+                  submitLabel="Сохранить комнату"
+                  onSubmit={handleCreateSubmit}
+                  onCancel={handleFormCancel}
+              />
+            </article>
+        )}
 
-      {pendingDeleteRoom ? (
-        <article className="card form-card">
-          <div>
-            <h3>Удалить комнату</h3>
-            <p className="muted">
-              Вы уверены, что хотите удалить комнату <strong>{pendingDeleteRoom.roomNumber}</strong> (
-              {pendingDeleteRoom.id})?
-            </p>
-          </div>
-          <div className="form-actions">
-            <button className="btn ghost" type="button" onClick={() => setPendingDeleteId(null)}>
-              Отмена
-            </button>
-            <button className="btn danger" type="button" onClick={handleDeleteConfirm}>
-              Удалить
-            </button>
-          </div>
-        </article>
-      ) : null}
-    </section>
+        {formMode === 'edit' && selectedRoom && (
+            <article className="card form-card">
+              <AdminRoomForm
+                  initialData={selectedRoom}
+                  title="Изменить комнату"
+                  submitLabel="Сохранить изменения"
+                  onSubmit={() => toast.info('PUT /rooms пока не реализован')}
+                  onCancel={handleFormCancel}
+              />
+            </article>
+        )}
+
+        {pendingDeleteRoom && (
+            <article className="card form-card">
+              <h3>Удалить комнату</h3>
+              <p className="muted">
+                Удалить комнату <strong>{pendingDeleteRoom.roomNumber}</strong> ({pendingDeleteRoom.id})?
+              </p>
+
+              <div className="form-actions">
+                <button className="btn ghost" onClick={() => setPendingDeleteId(null)}>
+                  Отмена
+                </button>
+                <button className="btn danger" onClick={handleDeleteConfirm}>
+                  Удалить
+                </button>
+              </div>
+            </article>
+        )}
+      </section>
   )
 }
 

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 
 const createDefaultMedicationForm = () => ({
   name: '',
-  notes: '',
+  description: '',
+  intakeTime: [],
 })
 
 function normalizeInitialData(initialData) {
@@ -10,16 +11,28 @@ function normalizeInitialData(initialData) {
 
   return {
     name: initialData.name ?? '',
-    notes: initialData.notes ?? '',
+    description: initialData.description ?? '',
+    intakeTime: initialData.intakeTime ?? [],
   }
 }
 
-function AdminMedicationForm({ initialData, title, description, submitLabel = 'Сохранить', onSubmit, onCancel }) {
-  const [form, setForm] = useState(() => normalizeInitialData(initialData))
+function AdminMedicationForm({
+  initialData,
+  title,
+  description: formDescription,
+  submitLabel = 'Сохранить',
+  onSubmit,
+  onCancel,
+}) {
+  const [form, setForm] = useState(() =>
+    normalizeInitialData(initialData)
+  )
 
   useEffect(() => {
     setForm(normalizeInitialData(initialData))
   }, [initialData])
+
+  // ===== basic fields =====
 
   const handleChange = (field) => (event) => {
     setForm((current) => ({
@@ -28,6 +41,33 @@ function AdminMedicationForm({ initialData, title, description, submitLabel = '�
     }))
   }
 
+  // ===== intake time =====
+
+  const handleTimeChange = (index) => (event) => {
+    const value = event.target.value
+    setForm((current) => {
+      const updated = [...current.intakeTime]
+      updated[index] = value
+      return { ...current, intakeTime: updated }
+    })
+  }
+
+  const handleAddTime = () => {
+    setForm((current) => ({
+      ...current,
+      intakeTime: [...current.intakeTime, ''],
+    }))
+  }
+
+  const handleRemoveTime = (index) => () => {
+    setForm((current) => ({
+      ...current,
+      intakeTime: current.intakeTime.filter((_, i) => i !== index),
+    }))
+  }
+
+  // ===== submit =====
+
   const handleSubmit = (event) => {
     event.preventDefault()
 
@@ -35,7 +75,10 @@ function AdminMedicationForm({ initialData, title, description, submitLabel = '�
 
     onSubmit({
       name: form.name.trim(),
-      notes: form.notes.trim(),
+      description: form.description.trim(),
+      intakeTime: form.intakeTime
+        .map((t) => t.trim())
+        .filter(Boolean), // убрать пустые
     })
   }
 
@@ -43,9 +86,13 @@ function AdminMedicationForm({ initialData, title, description, submitLabel = '�
     <>
       <div>
         <h3>{title}</h3>
-        {description ? <p className="muted">{description}</p> : null}
+        {formDescription ? (
+          <p className="muted">{formDescription}</p>
+        ) : null}
       </div>
+
       <form className="form-grid" onSubmit={handleSubmit}>
+        {/* NAME */}
         <div className="field">
           <label htmlFor="med-name">Название препарата</label>
           <input
@@ -58,23 +105,68 @@ function AdminMedicationForm({ initialData, title, description, submitLabel = '�
           />
         </div>
 
+        {/* DESCRIPTION */}
         <div className="field">
-          <label htmlFor="med-notes">Описание</label>
+          <label htmlFor="med-description">Описание</label>
           <textarea
-            id="med-notes"
-            value={form.notes}
-            onChange={handleChange('notes')}
-            rows={4}
-            placeholder="Дополнительные инструкции для администраторов"
+            id="med-description"
+            value={form.description}
+            onChange={handleChange('description')}
+            rows={3}
+            placeholder="Описание или инструкция"
+            required
           />
         </div>
 
+        {/* INTAKE TIME */}
+        <div className="field">
+          <label>Время приёма</label>
+
+          {form.intakeTime.length === 0 && (
+            <div className="muted">Время не добавлено</div>
+          )}
+
+          {form.intakeTime.map((time, index) => (
+            <div
+              key={index}
+              style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}
+            >
+              <input
+                type="time"
+                value={time}
+                onChange={handleTimeChange(index)}
+              />
+              <button
+                type="button"
+                className="btn danger small"
+                onClick={handleRemoveTime(index)}
+              >
+                Удалить
+              </button>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            className="btn ghost small"
+            onClick={handleAddTime}
+          >
+            + Добавить время
+          </button>
+        </div>
+
+        {/* ACTIONS */}
         <div className="form-actions">
-          {onCancel ? (
-            <button className="btn ghost" type="button" onClick={onCancel}>
+          {onCancel && (
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={onCancel}
+            >
               Отмена
             </button>
-          ) : null}
+          )}
+
           <button className="btn primary" type="submit">
             {submitLabel}
           </button>

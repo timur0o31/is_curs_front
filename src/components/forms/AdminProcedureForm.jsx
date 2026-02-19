@@ -86,7 +86,7 @@ function AdminProcedureForm({ initialData, title, description, submitLabel = 'С
 
         <div className="field-row">
           <div className="field">
-            <label htmlFor="procedure-default-seats">Базовые места (defaultSeats)</label>
+            <label htmlFor="procedure-default-seats">Базовые места</label>
             <input
               id="procedure-default-seats"
               type="number"
@@ -97,7 +97,7 @@ function AdminProcedureForm({ initialData, title, description, submitLabel = 'С
             />
           </div>
           <div className="field">
-            <label htmlFor="procedure-duration">Длительность (Duration)</label>
+            <label htmlFor="procedure-duration">Длительность</label>
             <input
               id="procedure-duration"
               type="text"
@@ -116,7 +116,7 @@ function AdminProcedureForm({ initialData, title, description, submitLabel = 'С
             checked={form.isOptional}
             onChange={handleChange('isOptional')}
           />
-          Процедура опциональная (`isOptional`)
+          Процедура опциональная
         </label>
 
         <div className="form-actions">

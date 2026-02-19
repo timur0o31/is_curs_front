@@ -1,36 +1,47 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import AdminNav from '../../components/admin/AdminNav'
 import SectionHeading from '../../components/SectionHeading'
-import AdminLockerForm, { createDefaultLockerForm } from '../../components/forms/AdminLockerForm'
+import AdminLockerForm from '../../components/forms/AdminLockerForm'
+import api from "../../config/Api.js";
 
-const initialLockers = []
-
-const buildLockerId = (items) => {
-  const maxIndex = items.reduce((max, item) => {
-    const match = String(item.id).match(/(\d+)/)
-    if (!match) return max
-    return Math.max(max, Number(match[1]))
-  }, 0)
-  return `LOCK-${String(maxIndex + 1).padStart(3, '0')}`
-}
+const API_URL = '/lockers'
 
 function AdminLockersPage({ onNavigate }) {
-  const [lockers, setLockers] = useState(initialLockers)
+  const [lockers, setLockers] = useState([])
   const [selectedLockerId, setSelectedLockerId] = useState(null)
   const [formMode, setFormMode] = useState(null)
   const [pendingDeleteId, setPendingDeleteId] = useState(null)
 
+  useEffect(() => {
+    fetch(api.BASE_URL + API_URL, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+      }
+    })
+        .then((res) => {
+          if (!res.ok) throw new Error()
+          return res.json()
+        })
+        .then(setLockers)
+        .catch(() => toast.error('Ошибка загрузки шкафчиков'))
+  }, [])
+
   const selectedLocker = useMemo(
-    () => lockers.find((item) => String(item.id) === String(selectedLockerId)) ?? null,
-    [lockers, selectedLockerId],
+      () => lockers.find((item) => String(item.id) === String(selectedLockerId)) ?? null,
+      [lockers, selectedLockerId],
   )
 
   const pendingDeleteLocker = useMemo(
-    () => lockers.find((item) => String(item.id) === String(pendingDeleteId)) ?? null,
-    [lockers, pendingDeleteId],
+      () => lockers.find((item) => String(item.id) === String(pendingDeleteId)) ?? null,
+      [lockers, pendingDeleteId],
   )
 
+  /* =========================
+     HANDLERS
+     ========================= */
   const handleSelectLocker = (item) => {
     setSelectedLockerId(item.id)
   }
@@ -45,8 +56,8 @@ function AdminLockersPage({ onNavigate }) {
       toast.warn('Сначала выберите шкафчик в таблице')
       return
     }
-    setPendingDeleteId(null)
     setFormMode('edit')
+    setPendingDeleteId(null)
   }
 
   const handleDeleteRequest = () => {
@@ -61,212 +72,201 @@ function AdminLockersPage({ onNavigate }) {
     setFormMode(null)
   }
 
-  const handleCreateSubmit = (formData) => {
+  /* =========================
+     CREATE LOCKER (POST)
+     ========================= */
+  const handleCreateSubmit = async (formData) => {
     if (!Number.isInteger(formData.lockerNumber) || formData.lockerNumber <= 0) {
       toast.warn('Укажите корректный номер шкафчика')
       return
     }
 
-    const alreadyExists = lockers.some((item) => Number(item.lockerNumber) === Number(formData.lockerNumber))
-    if (alreadyExists) {
-      toast.warn('Шкафчик с таким номером уже есть')
-      return
-    }
-
     if (formData.patientId != null) {
-      const patientAlreadyAssigned = lockers.some((item) => Number(item.patientId) === Number(formData.patientId))
+      const patientAlreadyAssigned = lockers.some(
+          (item) => Number(item.patientId) === Number(formData.patientId),
+      )
       if (patientAlreadyAssigned) {
         toast.warn('Этот пациент уже закреплен за другим шкафчиком')
         return
       }
     }
 
-    const createdItem = {
-      ...createDefaultLockerForm(),
-      ...formData,
-      id: buildLockerId(lockers),
-    }
+    try {
+      const res = await fetch(api.BASE_URL + API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      })
 
-    setLockers((prev) => [createdItem, ...prev])
-    setSelectedLockerId(createdItem.id)
-    setFormMode(null)
-    toast.success('Шкафчик добавлен')
+      if (!res.ok) throw new Error()
+
+      const createdLocker = await res.json()
+
+      setLockers((prev) => [createdLocker, ...prev])
+      setSelectedLockerId(createdLocker.id)
+      setFormMode(null)
+
+      toast.success('Шкафчик добавлен')
+    } catch {
+      toast.error('Ошибка при создании шкафчика')
+    }
   }
 
-  const handleEditSubmit = (formData) => {
-    if (!selectedLocker) {
-      toast.warn('Выберите шкафчик для изменения')
-      return
-    }
-
-    if (!Number.isInteger(formData.lockerNumber) || formData.lockerNumber <= 0) {
-      toast.warn('Укажите корректный номер шкафчика')
-      return
-    }
-
-    const duplicateLockerNumber = lockers.some(
-      (item) => item.id !== selectedLocker.id && Number(item.lockerNumber) === Number(formData.lockerNumber),
-    )
-    if (duplicateLockerNumber) {
-      toast.warn('Шкафчик с таким номером уже есть')
-      return
-    }
-
-    if (formData.patientId != null) {
-      const duplicatePatient = lockers.some(
-        (item) => item.id !== selectedLocker.id && Number(item.patientId) === Number(formData.patientId),
-      )
-      if (duplicatePatient) {
-        toast.warn('Этот пациент уже закреплен за другим шкафчиком')
-        return
-      }
-    }
-
-    setLockers((prev) =>
-      prev.map((item) =>
-        item.id === selectedLocker.id
-          ? {
-              ...item,
-              ...formData,
-            }
-          : item,
-      ),
-    )
-    setFormMode(null)
-    toast.success('Шкафчик обновлен')
-  }
-
-  const handleDeleteConfirm = () => {
+  /* =========================
+     DELETE LOCKER (DELETE)
+     ========================= */
+  const handleDeleteConfirm = async () => {
     if (!pendingDeleteLocker) return
 
-    setLockers((prev) => prev.filter((item) => item.id !== pendingDeleteLocker.id))
-    if (String(selectedLockerId) === String(pendingDeleteLocker.id)) {
-      setSelectedLockerId(null)
+    try {
+      const res = await fetch(`${api.BASE_URL + API_URL}/${pendingDeleteLocker.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        }
+      })
+
+      if (!res.ok) throw new Error()
+
+      setLockers((prev) => prev.filter((item) => item.id !== pendingDeleteLocker.id))
+
+      if (String(selectedLockerId) === String(pendingDeleteLocker.id)) {
+        setSelectedLockerId(null)
+      }
+
+      setPendingDeleteId(null)
+      setFormMode(null)
+
+      toast.success('Шкафчик удален')
+    } catch {
+      toast.error('Ошибка при удалении шкафчика')
     }
-    setPendingDeleteId(null)
-    setFormMode(null)
-    toast.success('Шкафчик удален')
   }
 
   return (
-    <section className="section dashboard" id="admin-lockers">
-      <SectionHeading
-        eyebrow="Администрирование"
-        title="Шкафчики"
-        description="Управление списком шкафчиков: добавление, изменение и удаление."
-      />
-      <AdminNav current="admin-lockers" onNavigate={onNavigate} />
+      <section className="section dashboard" id="admin-lockers">
+        <SectionHeading
+            eyebrow="Администрирование"
+            title="Шкафчики"
+            description="Управление списком шкафчиков: добавление, изменение и удаление."
+        />
 
-      {formMode == null ? (
-        <article className="card table-card">
-          <div className="table-toolbar">
-            <div>
-              <h3>Список шкафчиков</h3>
-            </div>
-            <div className="action-row">
-              <button className="btn primary small" type="button" onClick={handleCreate}>
-                Создать
-              </button>
-              <button className="btn ghost small" type="button" onClick={handleEdit} disabled={!selectedLocker}>
-                Изменить
-              </button>
-              <button
-                className="btn danger small"
-                type="button"
-                onClick={handleDeleteRequest}
-                disabled={!selectedLocker}
-              >
-                Удалить
-              </button>
-            </div>
-          </div>
+        <AdminNav current="admin-lockers" onNavigate={onNavigate} />
 
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Номер шкафчика</th>
-                  <th>ID пациента</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lockers.length === 0 ? (
+        {formMode == null && (
+            <article className="card table-card">
+              <div className="table-toolbar">
+                <h3>Список шкафчиков</h3>
+
+                <div className="action-row">
+                  <button className="btn primary small" onClick={handleCreate}>
+                    Создать
+                  </button>
+                  <button
+                      className="btn ghost small"
+                      onClick={handleEdit}
+                      disabled={!selectedLocker}
+                  >
+                    Изменить
+                  </button>
+                  <button
+                      className="btn danger small"
+                      onClick={handleDeleteRequest}
+                      disabled={!selectedLocker}
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
+
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
                   <tr>
-                    <td colSpan={3}>Шкафчики не найдены</td>
+                    <th>ID</th>
+                    <th>Номер шкафчика</th>
+                    <th>ID пациента</th>
                   </tr>
-                ) : (
-                  lockers.map((item) => {
-                    const isSelected = String(item.id) === String(selectedLockerId)
-                    return (
-                      <tr
-                        key={item.id}
-                        className={isSelected ? 'medication-row medication-row--selected' : 'medication-row'}
-                        onClick={() => handleSelectLocker(item)}
-                      >
-                        <td>{item.id}</td>
-                        <td>{item.lockerNumber}</td>
-                        <td>{item.patientId ?? '—'}</td>
+                  </thead>
+                  <tbody>
+                  {lockers.length === 0 ? (
+                      <tr>
+                        <td colSpan={3}>Шкафчики не найдены</td>
                       </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </article>
-      ) : null}
+                  ) : (
+                      lockers.map((item) => {
+                        const isSelected = String(item.id) === String(selectedLockerId)
 
-      {formMode === 'create' ? (
-        <article className="card form-card">
-          <AdminLockerForm
-            key="create"
-            title="Новый шкафчик"
-            description="Форма соответствует модели Locker из backend."
-            submitLabel="Сохранить шкафчик"
-            onSubmit={handleCreateSubmit}
-            onCancel={handleFormCancel}
-          />
-        </article>
-      ) : null}
+                        return (
+                            <tr
+                                key={item.id}
+                                className={
+                                  isSelected
+                                      ? 'medication-row medication-row--selected'
+                                      : 'medication-row'
+                                }
+                                onClick={() => handleSelectLocker(item)}
+                            >
+                              <td>{item.id}</td>
+                              <td>{item.lockerNumber}</td>
+                              <td>{item.patientId ?? '—'}</td>
+                            </tr>
+                        )
+                      })
+                  )}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+        )}
 
-      {formMode === 'edit' ? (
-        <article className="card form-card">
-          <AdminLockerForm
-            initialData={selectedLocker}
-            title="Изменить шкафчик"
-            description={
-              selectedLocker
-                ? `Редактирование шкафчика ${selectedLocker.lockerNumber} (${selectedLocker.id})`
-                : ''
-            }
-            submitLabel="Сохранить изменения"
-            onSubmit={handleEditSubmit}
-            onCancel={handleFormCancel}
-          />
-        </article>
-      ) : null}
+        {formMode === 'create' && (
+            <article className="card form-card">
+              <AdminLockerForm
+                  title="Новый шкафчик"
+                  submitLabel="Сохранить шкафчик"
+                  onSubmit={handleCreateSubmit}
+                  onCancel={handleFormCancel}
+              />
+            </article>
+        )}
 
-      {pendingDeleteLocker ? (
-        <article className="card form-card">
-          <div>
-            <h3>Удалить шкафчик</h3>
-            <p className="muted">
-              Вы уверены, что хотите удалить шкафчик <strong>{pendingDeleteLocker.lockerNumber}</strong> (
-              {pendingDeleteLocker.id})?
-            </p>
-          </div>
-          <div className="form-actions">
-            <button className="btn ghost" type="button" onClick={() => setPendingDeleteId(null)}>
-              Отмена
-            </button>
-            <button className="btn danger" type="button" onClick={handleDeleteConfirm}>
-              Удалить
-            </button>
-          </div>
-        </article>
-      ) : null}
-    </section>
+        {formMode === 'edit' && selectedLocker && (
+            <article className="card form-card">
+              <AdminLockerForm
+                  initialData={selectedLocker}
+                  title="Изменить шкафчик"
+                  submitLabel="Сохранить изменения"
+                  onSubmit={() => toast.info('PUT /lockers пока не реализован')}
+                  onCancel={handleFormCancel}
+              />
+            </article>
+        )}
+
+        {pendingDeleteLocker && (
+            <article className="card form-card">
+              <h3>Удалить шкафчик</h3>
+              <p className="muted">
+                Удалить шкафчик <strong>{pendingDeleteLocker.lockerNumber}</strong> (
+                {pendingDeleteLocker.id})?
+              </p>
+
+              <div className="form-actions">
+                <button className="btn ghost" onClick={() => setPendingDeleteId(null)}>
+                  Отмена
+                </button>
+                <button className="btn danger" onClick={handleDeleteConfirm}>
+                  Удалить
+                </button>
+              </div>
+            </article>
+        )}
+      </section>
   )
 }
 
