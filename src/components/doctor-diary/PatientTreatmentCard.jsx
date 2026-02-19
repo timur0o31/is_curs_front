@@ -49,6 +49,10 @@ function PatientTreatmentCard({ selectedPatient }) {
     () => normalizePositiveInt(selectedPatient?.patientId),
     [selectedPatient?.patientId],
   )
+  const selectedMedicalCardId = useMemo(
+    () => normalizePositiveInt(selectedPatient?.medicalCardId),
+    [selectedPatient?.medicalCardId],
+  )
 
   const [dietValue, setDietValue] = useState('')
   const [isAssigningDiet, setIsAssigningDiet] = useState(false)
@@ -158,8 +162,27 @@ function PatientTreatmentCard({ selectedPatient }) {
     const startDate = String(prescriptionForm.startDate || '').trim()
     const endDate = String(prescriptionForm.endDate || '').trim()
 
+    if (isMedicamentsLoading) {
+      setPrescriptionError('Дождитесь загрузки списка препаратов.')
+      setPrescriptionSuccess('')
+      return
+    }
+
+    if (medicaments.length === 0) {
+      setPrescriptionError('Справочник препаратов пуст или недоступен. Введите медикаменты в систему.')
+      setPrescriptionSuccess('')
+      return
+    }
+
     if (medicamentId == null) {
       setPrescriptionError('Выберите препарат.')
+      setPrescriptionSuccess('')
+      return
+    }
+
+    const isKnownMedicament = medicaments.some((item) => item.id === medicamentId)
+    if (!isKnownMedicament) {
+      setPrescriptionError('Выбранный препарат не найден в справочнике сервера.')
       setPrescriptionSuccess('')
       return
     }
@@ -193,13 +216,16 @@ function PatientTreatmentCard({ selectedPatient }) {
     setPrescriptionSuccess('')
 
     try {
-      await DoctorDiary.createPrescriptionForPatient(selectedPatientId, {
+      const payload = {
         medicamentId,
         dosage,
         frequency,
         startDate,
         endDate: endDate || null,
-      })
+        ...(selectedMedicalCardId != null ? { medicalCardId: selectedMedicalCardId } : {}),
+      }
+
+      await DoctorDiary.createPrescriptionForPatient(selectedPatientId, payload)
       setPrescriptionSuccess('Назначение сохранено.')
       setPrescriptionForm((prev) => ({
         ...prev,
@@ -272,34 +298,26 @@ function PatientTreatmentCard({ selectedPatient }) {
         <form className="doctor-session-form" onSubmit={handlePrescriptionSubmit}>
           <div className="field">
             <label htmlFor="doctor-patient-medicament">Препарат</label>
-            {medicaments.length > 0 ? (
-              <select
-                id="doctor-patient-medicament"
-                name="medicamentId"
-                value={prescriptionForm.medicamentId}
-                onChange={handlePrescriptionFieldChange}
-                disabled={!hasSelectedPatient || isCreatingPrescription}
-              >
-                <option value="">Выберите препарат</option>
-                {medicaments.map((item) => (
-                  <option key={`doctor-medicament-${item.id}`} value={String(item.id)}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id="doctor-patient-medicament"
-                name="medicamentId"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="ID препарата"
-                value={prescriptionForm.medicamentId}
-                onChange={handlePrescriptionFieldChange}
-                disabled={!hasSelectedPatient || isCreatingPrescription}
-              />
-            )}
+            <select
+              id="doctor-patient-medicament"
+              name="medicamentId"
+              value={prescriptionForm.medicamentId}
+              onChange={handlePrescriptionFieldChange}
+              disabled={!hasSelectedPatient || isCreatingPrescription || isMedicamentsLoading || medicaments.length === 0}
+            >
+              <option value="">
+                {isMedicamentsLoading
+                  ? 'Загрузка препаратов...'
+                  : medicaments.length === 0
+                    ? 'Нет доступных препаратов'
+                    : 'Выберите препарат'}
+              </option>
+              {medicaments.map((item) => (
+                <option key={`doctor-medicament-${item.id}`} value={String(item.id)}>
+                  {item.name} (ID {item.id})
+                </option>
+              ))}
+            </select>
             {isMedicamentsLoading ? <p className="muted">Загружаем препараты...</p> : null}
             {!isMedicamentsLoading && medicamentsError ? (
               <p className="doctor-session-feedback error">{medicamentsError}</p>

@@ -234,6 +234,19 @@ const getPatientProceduresFromActivePatient = (item) =>
       [],
   )
 
+const getMedicalCardIdFromActivePatient = (item) =>
+  normalizePositiveInt(
+    item?.medicalCardId ??
+      item?.medicalCard?.id ??
+      item?.medicalCard?.medicalCardId ??
+      item?.patient?.medicalCardId ??
+      item?.patient?.medicalCard?.id ??
+      item?.patient?.medicalCard?.medicalCardId ??
+      item?.cardId ??
+      item?.patientCardId ??
+      null,
+  )
+
 export const mapActivePatients = (items) =>
   items
     .filter((item) => item != null)
@@ -258,6 +271,7 @@ export const mapActivePatients = (items) =>
       const name = patientName || (patientId != null ? `Пациент #${patientId}` : 'Пациент')
       const stayId = getStayIdFromActivePatient(item)
       const { stayStartDate, stayEndDate } = getStayDateRangeFromActivePatient(item)
+      const medicalCardId = getMedicalCardIdFromActivePatient(item)
       const dischargeLabel = formatDateLabel(stayEndDate)
       const procedureNames = getPatientProceduresFromActivePatient(item)
 
@@ -265,6 +279,7 @@ export const mapActivePatients = (items) =>
         id: item?.id ?? patientId ?? stayId ?? `${name}-${index}`,
         stayId,
         patientId,
+        medicalCardId,
         name,
         status: dischargeLabel === '—' ? 'Активное проживание' : `Активно до ${dischargeLabel}`,
         stayStartDate,
