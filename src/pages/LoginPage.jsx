@@ -22,7 +22,6 @@ function LoginPage({ onNavigate }) {
           <ul className="checklist">
             <li>Управление личным расписанием процедур.</li>
             <li>Уведомления о приеме лекарств и процедурах.</li>
-            <li>Режим «Не беспокоить» и цифровые ключи.</li>
             <li>Дневник состояния здоровья с рекомендациями врача.</li>
           </ul>
           <div className="aside-panel">
@@ -38,33 +37,6 @@ function LoginPage({ onNavigate }) {
                 onClick={(event) => handleRoleClick(event, 'register')}
               >
                 Регистрация
-              </a>
-            </div>
-          </div>
-          <div className="aside-panel">
-            <span className="panel-label">Демо-доступ</span>
-            <p>Посмотрите интерфейсы ролей без авторизации.</p>
-            <div className="action-row">
-              <a
-                className="btn ghost small"
-                href="?page=patient"
-                onClick={(event) => handleRoleClick(event, 'patient')}
-              >
-                Пациент
-              </a>
-              <a
-                className="btn ghost small"
-                href="?page=doctor"
-                onClick={(event) => handleRoleClick(event, 'doctor')}
-              >
-                Врач
-              </a>
-              <a
-                className="btn ghost small"
-                href="?page=admin"
-                onClick={(event) => handleRoleClick(event, 'admin')}
-              >
-                Админ
               </a>
             </div>
           </div>

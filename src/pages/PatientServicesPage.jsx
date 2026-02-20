@@ -527,7 +527,6 @@ function PatientServicesPage({ onNavigate }) {
               Освободить шкафчик
             </button>
           </div>
-          <p className="note">Режим «Не беспокоить» активен с 21:00 до 08:00.</p>
         </article>
 
         <article className="card">

@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import SectionHeading from '../components/SectionHeading'
 import DoctorDiary from '../services/DoctorDiary'
+import PatientNotifications from '../services/PatientNotifications'
 import {
   formatRuDate,
   getTodayIsoDate,
   normalizeDateValue,
+  parseDateValue,
   normalizeTimeValue,
 } from '../utils/dateTime'
 
@@ -80,6 +82,52 @@ const getErrorMessage = (error, fallback) => {
   return fallback
 }
 
+const normalizePositiveInt = (value) => {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return null
+  return Math.trunc(numericValue)
+}
+
+const mapNotification = (item) => {
+  const id = normalizePositiveInt(item?.id)
+  if (id == null) return null
+
+  const rawMessage = typeof item?.message === 'string' ? item.message.trim() : ''
+
+  return {
+    id,
+    message: rawMessage || 'Уведомление',
+    createdAt: item?.createdAt ?? null,
+    read: Boolean(item?.read),
+  }
+}
+
+const getNotificationTimestamp = (value) => {
+  const date = parseDateValue(value)
+  return date ? date.getTime() : 0
+}
+
+const formatNotificationDateLabel = (value) => {
+  const date = parseDateValue(value)
+  if (!date) return 'Дата не указана'
+
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const getNotificationsErrorMessage = (error, fallback = 'Не удалось загрузить уведомления.') => {
+  const status = error?.response?.status
+  if (status === 401) return 'Сессия авторизации истекла. Войдите снова.'
+  if (status === 403) return 'Недостаточно прав для просмотра уведомлений.'
+  if (status === 404) return 'Метод уведомлений не найден на сервере.'
+  return fallback
+}
+
 function DoctorDashboardPage({ onNavigate }) {
   const role = String(localStorage.getItem('role') || '').toUpperCase()
   const accessToken = localStorage.getItem('accessToken')
@@ -92,6 +140,12 @@ function DoctorDashboardPage({ onNavigate }) {
   const [todaySessions, setTodaySessions] = useState([])
   const [isTodaySessionsLoading, setIsTodaySessionsLoading] = useState(false)
   const [todaySessionsError, setTodaySessionsError] = useState('')
+  const [notificationsView, setNotificationsView] = useState('unread')
+  const [notifications, setNotifications] = useState([])
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
+  const [isNotificationsLoading, setIsNotificationsLoading] = useState(false)
+  const [notificationsError, setNotificationsError] = useState('')
+  const [markingNotificationId, setMarkingNotificationId] = useState(null)
 
   const todayIsoDate = getTodayIsoDate()
 
@@ -212,12 +266,96 @@ function DoctorDashboardPage({ onNavigate }) {
     }
   }, [isApprovedDoctor, isCheckingDoctorStatus, shouldCheckDoctorStatus, todayIsoDate])
 
+  const loadNotifications = useCallback(
+    async (view = 'unread') => {
+      if (!shouldCheckDoctorStatus || isCheckingDoctorStatus || !isApprovedDoctor) {
+        setNotificationsView(view)
+        setNotifications([])
+        setUnreadNotificationsCount(0)
+        setNotificationsError('')
+        setIsNotificationsLoading(false)
+        return
+      }
+
+      setNotificationsView(view)
+      setIsNotificationsLoading(true)
+      setNotificationsError('')
+
+      try {
+        const response =
+          view === 'all'
+            ? await PatientNotifications.getMyNotifications()
+            : await PatientNotifications.getMyUnreadNotifications()
+
+        const items = Array.isArray(response?.data) ? response.data : []
+        const mappedNotifications = items
+          .map(mapNotification)
+          .filter(Boolean)
+          .sort(
+            (first, second) =>
+              getNotificationTimestamp(second.createdAt) - getNotificationTimestamp(first.createdAt),
+          )
+
+        setNotifications(mappedNotifications)
+        setUnreadNotificationsCount(
+          view === 'unread'
+            ? mappedNotifications.length
+            : mappedNotifications.filter((item) => !item.read).length,
+        )
+      } catch (error) {
+        setNotifications([])
+        setNotificationsError(getNotificationsErrorMessage(error))
+      } finally {
+        setIsNotificationsLoading(false)
+      }
+    },
+    [isApprovedDoctor, isCheckingDoctorStatus, shouldCheckDoctorStatus],
+  )
+
+  useEffect(() => {
+    loadNotifications('unread')
+  }, [loadNotifications])
+
   const showPendingApproval = shouldCheckDoctorStatus && !isCheckingDoctorStatus && !isApprovedDoctor
 
   const handleNavigate = (event, page) => {
     if (!onNavigate) return
     event.preventDefault()
     onNavigate(page)
+  }
+
+  const handleNotificationsViewChange = (view) => {
+    if (isNotificationsLoading && view === notificationsView) return
+    loadNotifications(view)
+  }
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification || notification.read) return
+
+    setMarkingNotificationId(notification.id)
+    setNotificationsError('')
+
+    try {
+      await PatientNotifications.markAsRead(notification.id)
+
+      setUnreadNotificationsCount((current) => Math.max(0, current - 1))
+      setNotifications((current) => {
+        if (notificationsView === 'unread') {
+          return current.filter((item) => item.id !== notification.id)
+        }
+
+        return current.map((item) => {
+          if (item.id !== notification.id) return item
+          return { ...item, read: true }
+        })
+      })
+    } catch (error) {
+      setNotificationsError(
+        getNotificationsErrorMessage(error, 'Не удалось отметить уведомление как прочитанное.'),
+      )
+    } finally {
+      setMarkingNotificationId(null)
+    }
   }
 
   if (isCheckingDoctorStatus) {
@@ -308,6 +446,71 @@ function DoctorDashboardPage({ onNavigate }) {
                   <span className="tag">В работе</span>
                 </li>
               ))}
+            </ul>
+          )}
+        </article>
+        <article className="card">
+          <div className="notifications-header">
+            <h3>Уведомления</h3>
+            <span className={`status${unreadNotificationsCount > 0 ? ' status--warn' : ''}`}>
+              {unreadNotificationsCount > 0 ? `Непрочитанных: ${unreadNotificationsCount}` : 'Новых нет'}
+            </span>
+          </div>
+          <div className="action-row">
+            <button
+              className={`btn ${notificationsView === 'unread' ? 'primary' : 'ghost'} small`}
+              type="button"
+              onClick={() => handleNotificationsViewChange('unread')}
+              disabled={isNotificationsLoading}
+            >
+              Непрочитанные
+            </button>
+            <button
+              className={`btn ${notificationsView === 'all' ? 'primary' : 'ghost'} small`}
+              type="button"
+              onClick={() => handleNotificationsViewChange('all')}
+              disabled={isNotificationsLoading}
+            >
+              Все уведомления
+            </button>
+          </div>
+          {isNotificationsLoading ? (
+            <p className="muted">Загружаем уведомления...</p>
+          ) : notificationsError ? (
+            <p className="muted">{notificationsError}</p>
+          ) : notifications.length === 0 ? (
+            <p className="muted">
+              {notificationsView === 'all' ? 'Уведомлений пока нет.' : 'Непрочитанных уведомлений нет.'}
+            </p>
+          ) : (
+            <ul className="list notification-list">
+              {notifications.map((notification) => {
+                const isRead = notification.read
+                const isMarking = markingNotificationId === notification.id
+
+                return (
+                  <li
+                    key={`doctor-dashboard-notification-${notification.id}`}
+                    className={`notification-item${isRead ? '' : ' notification-item--unread'}`}
+                  >
+                    <button
+                      className="notification-item-button"
+                      type="button"
+                      onClick={() => handleNotificationClick(notification)}
+                      disabled={isRead || isMarking}
+                      title={isRead ? 'Уведомление уже прочитано' : 'Нажмите, чтобы отметить как прочитанное'}
+                    >
+                      <strong>{notification.message}</strong>
+                      <div className="notification-item-meta">
+                        <span className="list-meta">{formatNotificationDateLabel(notification.createdAt)}</span>
+                        <span className={`status${isRead ? '' : ' status--warn'}`}>
+                          {isMarking ? 'Сохраняем...' : isRead ? 'Прочитано' : 'Отметить как прочитанное'}
+                        </span>
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </article>

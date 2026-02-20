@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import About from '../components/About'
-import Contacts from '../components/Contacts'
 import Doctors from '../components/Doctors'
 import Events from '../components/Events'
 import Hero from '../components/Hero'
@@ -87,7 +86,6 @@ function HomePage() {
       <Procedures items={procedureItems} />
       <Doctors items={doctorItems} />
       <Events items={eventItems} />
-      <Contacts />
     </>
   )
 }

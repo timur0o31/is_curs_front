@@ -33,7 +33,6 @@ function Footer({ page = 'home', onNavigate }) {
     <footer className="site-footer">
       <div className="footer-inner">
         <div>
-          <span className="brand-title">Северный Берег</span>
           <p className="muted">
             Сервисная система для санатория: процедуры, врачи, мероприятия и
             забота о гостях.
@@ -69,10 +68,8 @@ function Footer({ page = 'home', onNavigate }) {
                 Регистрация
               </a>
             )}
-            <span className="footer-small">Мы ответим на все вопросы о путевках.</span>
           </div>
         )}
-        <div className="footer-note">© 2025 Санаторий «Северный Берег»</div>
       </div>
     </footer>
   )

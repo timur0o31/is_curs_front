@@ -37,8 +37,6 @@ body {
   font-family: var(--font-body);
   color: var(--ink);
   background:
-    radial-gradient(60% 60% at 12% 10%, rgba(31, 111, 109, 0.18), transparent 65%),
-    radial-gradient(50% 50% at 88% 0%, rgba(208, 138, 106, 0.16), transparent 60%),
     linear-gradient(180deg, #faf6ef 0%, #f4efe7 50%, #edf2ee 100%);
   line-height: 1.6;
 }

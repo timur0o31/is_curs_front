@@ -193,7 +193,7 @@
 
 .hero {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 48px;
   padding: 72px var(--page-padding) 40px;
   align-items: center;
@@ -203,20 +203,6 @@
   font-size: clamp(2.6rem, 4vw, 4.3rem);
   line-height: 1.05;
   margin: 16px 0;
-}
-
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(31, 111, 109, 0.12);
-  color: var(--sea-dark);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-weight: 600;
 }
 
 .hero-text {
@@ -230,6 +216,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.hero-actions .btn {
+  box-shadow: none;
 }
 
 .hero-stats {
@@ -1107,6 +1097,53 @@
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: var(--ink-soft);
+}
+
+.notifications-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.notification-list {
+  margin-top: 6px;
+}
+
+.notification-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 12px 14px;
+}
+
+.notification-item--unread {
+  border-color: rgba(31, 111, 109, 0.34);
+  background: rgba(231, 241, 236, 0.9);
+}
+
+.notification-item-button {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.notification-item-button:disabled {
+  cursor: default;
+}
+
+.notification-item-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .metric-grid {

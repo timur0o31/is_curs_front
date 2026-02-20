@@ -4,7 +4,6 @@ function Hero() {
   return (
     <section className="hero" id="top">
       <div className="hero-content">
-        <span className="hero-badge">Новый формат санаторного сервиса</span>
         <h1>Ритм восстановления, который подстраивается под каждого гостя.</h1>
         <p className="hero-text">
           Санаторий объединяет лечение, отдых и персональные рекомендации. Гости
@@ -13,9 +12,9 @@ function Hero() {
         </p>
         <div className="hero-actions">
           <a className="btn primary" href="#procedures">
-            Выбрать процедуры
+            Посмотреть процедуры
           </a>
-          <a className="btn ghost" href="#events">
+          <a className="btn primary" href="#events">
             Посмотреть мероприятия
           </a>
         </div>
@@ -30,36 +29,6 @@ function Hero() {
               <span className="stat-label">{stat.label}</span>
             </div>
           ))}
-        </div>
-      </div>
-      <div className="hero-panel">
-        <div className="panel-card reveal" style={{ '--delay': '0.25s' }}>
-          <div className="panel-heading">
-            <span className="pill">Сегодня</span>
-            <span className="panel-time">08:30–20:00</span>
-          </div>
-          <h3>Гостевой центр и сопровождение</h3>
-          <p>
-            Поможем выбрать программу, назначим первичный прием и покажем
-            инфраструктуру санатория.
-          </p>
-          <div className="panel-grid">
-            <div>
-              <span className="panel-label">Ближайшая смена</span>
-              <strong>12–26 марта</strong>
-            </div>
-            <div>
-              <span className="panel-label">Температура источника</span>
-              <strong>+32°C</strong>
-            </div>
-            <div>
-              <span className="panel-label">Свободных мест</span>
-              <strong>18 номеров</strong>
-            </div>
-          </div>
-          <a className="link" href="#contacts">
-            Запросить путевку →
-          </a>
         </div>
       </div>
     </section>

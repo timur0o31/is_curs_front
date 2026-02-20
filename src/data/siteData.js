@@ -3,7 +3,6 @@ export const navItems = [
   { id: 'procedures', label: 'Процедуры' },
   { id: 'doctors', label: 'Врачи' },
   { id: 'events', label: 'Мероприятия' },
-  { id: 'contacts', label: 'Контакты' },
 ]
 
 export const heroStats = [
