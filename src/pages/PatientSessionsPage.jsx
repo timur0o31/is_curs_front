@@ -286,9 +286,7 @@ function PatientSessionsPage({ onNavigate }) {
     <section className="section dashboard" id="patient-sessions">
       <div className="diary-header">
         <SectionHeading
-          eyebrow="Расписание пациента"
-          title="Календарь, консультации и мероприятия"
-          description="Смотрите свои процедуры и записывайтесь на доступные сеансы."
+          title="Расписание пациента"
         />
         <div className="action-row">
           <a className="btn ghost" href="?page=patient" onClick={handleBack}>
@@ -454,9 +452,6 @@ function PatientSessionsPage({ onNavigate }) {
               <span className="metric-value">{String(filteredSessions.length)}</span>
             </div>
           </div>
-          <p className="muted">
-            Если расписание пустое, проверьте endpoint для пациента на бэкенде.
-          </p>
         </article>
       </div>
       {isLoadingSessions ? null : (

@@ -594,9 +594,7 @@ function DoctorSessionsPage({ onNavigate }) {
   return (
     <section className="section dashboard" id="doctor-sessions">
       <SectionHeading
-        eyebrow="Расписание врача"
-        title="Управляйте своими сессиями и приемами"
-        description="Создавайте приемы, контролируйте сессии на сегодня и смотрите календарь будущего расписания."
+        title="Расписание врача"
       />
       <div className="action-row">
         <a className="btn ghost" href="?page=doctor" onClick={handleBackToDashboard}>

@@ -391,9 +391,7 @@ function DoctorDashboardPage({ onNavigate }) {
   return (
     <section className="section dashboard" id="doctor-dashboard">
       <SectionHeading
-        eyebrow="Кабинет врача"
-        title="Рабочий обзор врача"
-        description="Здесь быстрый доступ к расписанию, пациентам под наблюдением и дневникам."
+        title="Кабинет врача"
       />
       <div className="dashboard-grid dashboard-grid--three">
         <article className="card">

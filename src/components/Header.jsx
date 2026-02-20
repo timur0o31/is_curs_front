@@ -29,7 +29,7 @@ function Header({ page = 'home', onNavigate }) {
     patient: 'Кабинет пациента',
     doctor: 'Кабинет врача',
     admin: 'Панель администратора',
-    'admin-stays': 'Проживания',
+    'admin-stays': 'Администрирование',
     'admin-stay-requests': 'Заявки по проживанию',
     'admin-doctor-requests': 'Регистрация врачей',
     'admin-medications': 'Медикаменты',

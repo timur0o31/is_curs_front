@@ -304,9 +304,7 @@ function PatientStayRequestsPage({ onNavigate }) {
     <section className="section dashboard" id="patient-stay-requests">
       <div className="diary-header">
         <SectionHeading
-          eyebrow="Проживание"
-          title="Заявки и продление проживания"
-          description="Заполните заявку на заселение или отправьте запрос на продление текущего проживания."
+          title="Проживание"
         />
         <div className="action-row">
           <a className="btn ghost" href="?page=patient" onClick={handleBack}>
@@ -357,7 +355,6 @@ function PatientStayRequestsPage({ onNavigate }) {
         <div className="dashboard-stack">
           <article className="card">
             <h3>Мои заявки</h3>
-            <p className="muted">История поданных заявок и их статус.</p>
             {isLoadingHistory && requestHistory.length === 0 ? (
               <p className="muted">Загрузка заявок...</p>
             ) : requestHistory.length === 0 ? (

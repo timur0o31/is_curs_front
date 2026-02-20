@@ -77,9 +77,7 @@ function RegisterPage({ onNavigate }) {
   return (
     <section className="section register">
       <SectionHeading
-        eyebrow="Регистрация"
-        title="Создайте аккаунт для доступа к персональному сервису"
-        description="После регистрации вы сможете управлять расписанием процедур, получать уведомления и связываться с врачами."
+        title="Регистрация"
       />
       <div className="register-grid">
         <RegisterForm
@@ -87,15 +85,6 @@ function RegisterPage({ onNavigate }) {
           onNavigate={onNavigate}
           isSubmitting={isSubmitting}
         />
-        <aside className="card register-aside">
-          <h3>Что откроется после регистрации</h3>
-          <ul className="checklist">
-            <li>Персональное расписание процедур и питания.</li>
-            <li>Уведомления о приеме лекарств и событиях.</li>
-            <li>Доступ к цифровым ключам от комнаты и шкафчика.</li>
-            <li>Возможность вести дневник состояния здоровья.</li>
-          </ul>
-        </aside>
       </div>
     </section>
   )

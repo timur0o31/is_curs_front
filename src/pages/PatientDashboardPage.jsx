@@ -395,9 +395,7 @@ function PatientDashboardPage({ onNavigate }) {
   return (
     <section className="section dashboard" id="patient-dashboard">
       <SectionHeading
-        eyebrow="Личный кабинет"
-        title="Ваше восстановление под контролем"
-        description="Здесь собраны расписание процедур, уведомления и персональные сервисы."
+        title="Личный кабинет"
       />
       <div className="dashboard-grid dashboard-grid--three">
         <article className="card">

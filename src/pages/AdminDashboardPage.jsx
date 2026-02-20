@@ -1,6 +1,6 @@
 import AdminNav from '../components/admin/AdminNav'
 import SectionHeading from '../components/SectionHeading'
-import { availableRooms, doctorRequests, roleActions, stayRequests, stays } from '../data/adminData'
+import { availableRooms, doctorRequests, stayRequests, stays } from '../data/adminData'
 
 const summaryCards = [
   {
@@ -38,23 +38,7 @@ function AdminDashboardPage({ onNavigate }) {
           </div>
         ))}
       </div>
-      <div className="dashboard-grid dashboard-grid--two">
-        <article className="card">
-          <h3>Роли и доступ</h3>
-          <ul className="list">
-            {roleActions.map((item) => (
-              <li className="list-item" key={item.name}>
-                <div>
-                  <strong>{item.name}</strong>
-                  <p>{item.action}</p>
-                </div>
-                <button className="btn ghost small" type="button">
-                  Открыть
-                </button>
-              </li>
-            ))}
-          </ul>
-        </article>
+      <div className="dashboard-grid">
         <article className="card">
           <h3>Сводка по санаторию</h3>
           <div className="metric-grid">

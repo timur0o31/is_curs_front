@@ -1614,8 +1614,7 @@
 }
 
 .reveal {
-  animation: rise 0.7s ease both;
-  animation-delay: var(--delay, 0s);
+  animation: none;
 }
 
 @keyframes rise {

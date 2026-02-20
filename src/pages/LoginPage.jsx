@@ -11,36 +11,10 @@ function LoginPage({ onNavigate }) {
   return (
     <section className="section auth">
       <SectionHeading
-        eyebrow="Вход"
-        title="Войдите, чтобы управлять расписанием и сервисами"
-        description="Введите почту и пароль, чтобы получить доступ к персональному кабинету."
+        title="Вход"
       />
       <div className="auth-grid">
         <LoginForm onNavigate={onNavigate} />
-        <aside className="card auth-aside">
-          <h3>Доступно после входа</h3>
-          <ul className="checklist">
-            <li>Управление личным расписанием процедур.</li>
-            <li>Уведомления о приеме лекарств и процедурах.</li>
-            <li>Дневник состояния здоровья с рекомендациями врача.</li>
-          </ul>
-          <div className="aside-panel">
-            <span className="panel-label">Нет доступа?</span>
-            <p>
-              Если вы врач, регистрация проходит через подтверждение учетной
-              записи.
-            </p>
-            <div className="action-row">
-              <a
-                className="btn ghost small"
-                href="?page=register"
-                onClick={(event) => handleRoleClick(event, 'register')}
-              >
-                Регистрация
-              </a>
-            </div>
-          </div>
-        </aside>
       </div>
     </section>
   )

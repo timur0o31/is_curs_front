@@ -337,9 +337,7 @@ function DoctorDiaryPage({ onNavigate }) {
     <section className="section diary doctor-diary" id="doctor-diary">
       <div className="diary-header">
         <SectionHeading
-          eyebrow="Дневники активных пациентов"
-          title="Следите за динамикой и оставляйте рекомендации"
-          description="Здесь отображаются записи пациентов с активным проживанием под вашим наблюдением."
+          title="Дневники активных пациентов"
         />
         <div className="action-row">
           <a className="btn ghost" href="?page=doctor" onClick={handleBack}>

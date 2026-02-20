@@ -295,6 +295,10 @@ function PatientServicesPage({ onNavigate }) {
     () => lockers.find((item) => item.id === selectedLockerId) ?? null,
     [lockers, selectedLockerId],
   )
+  const myLocker = useMemo(
+    () => lockers.find((item) => item.id === myLockerId) ?? null,
+    [lockers, myLockerId],
+  )
 
   const selectedSeat = useMemo(
     () => seats.find((item) => item.id === selectedSeatId) ?? null,
@@ -350,6 +354,18 @@ function PatientServicesPage({ onNavigate }) {
       return
     }
 
+    if (myLocker != null && selectedLocker.id === myLocker.id) {
+      toast.info(`У вас уже закреплен шкафчик ${myLocker.lockerNumber}.`)
+      return
+    }
+
+    if (myLocker != null && selectedLocker.id !== myLocker.id) {
+      toast.info(
+        `У вас уже закреплен шкафчик ${myLocker.lockerNumber}. Освободите его перед выбором нового.`,
+      )
+      return
+    }
+
     setIsLockerActionLoading(true)
 
     try {
@@ -357,7 +373,15 @@ function PatientServicesPage({ onNavigate }) {
       await loadLockers(patientId)
       toast.success(`Шкафчик ${selectedLocker.lockerNumber} закреплен.`)
     } catch (error) {
-      toast.error(getRequestErrorMessage(error, 'Не удалось закрепить шкафчик.'))
+      const status = error?.response?.status
+
+      if (status === 409 && myLocker != null) {
+        toast.error(
+          `У вас уже закреплен шкафчик ${myLocker.lockerNumber}. Освободите его перед выбором нового.`,
+        )
+      } else {
+        toast.error(getRequestErrorMessage(error, 'Не удалось закрепить шкафчик.'))
+      }
     } finally {
       setIsLockerActionLoading(false)
     }
@@ -435,9 +459,7 @@ function PatientServicesPage({ onNavigate }) {
     <section className="section dashboard" id="patient-services">
       <div className="diary-header">
         <SectionHeading
-          eyebrow="Сервисы проживания"
           title="Цифровые ключи, шкафчики и место в столовой"
-          description="Выберите свободные слоты и закрепите доступы для комфортного отдыха."
         />
         <div className="action-row">
           <a className="btn ghost" href="?page=patient" onClick={handleBack}>
@@ -451,7 +473,7 @@ function PatientServicesPage({ onNavigate }) {
           <p className="muted">
             Комната {roomLabel}
             {selectedLocker ? ` · Выбран шкафчик ${selectedLocker.lockerNumber}` : ''}
-            {myLockerId != null ? ' · Ваш шкафчик закреплен' : ''}
+            {myLocker ? ` · Ваш шкафчик ${myLocker.lockerNumber} закреплен` : ''}
           </p>
           {patientIdError ? <p className="note">{patientIdError}</p> : null}
           {lockersError ? <p className="note">{lockersError}</p> : null}

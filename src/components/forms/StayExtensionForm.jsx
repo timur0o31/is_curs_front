@@ -92,7 +92,6 @@ function StayExtensionForm({ onSubmit, isSubmitting = false, initialCurrentCheck
           {isSubmitting ? 'Отправка...' : 'Отправить запрос'}
         </button>
       </div>
-      <p className="note">Ответ придет в течение рабочего дня.</p>
     </form>
   )
 }

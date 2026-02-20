@@ -1,6 +1,5 @@
 const adminNavItems = [
   { page: 'admin', label: 'Обзор' },
-  { page: 'admin-stays', label: 'Проживания' },
   { page: 'admin-stay-requests', label: 'Заявки по проживанию' },
   { page: 'admin-doctor-requests', label: 'Регистрация врачей' },
   { page: 'admin-medications', label: 'Медикаменты' },
